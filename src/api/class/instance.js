@@ -61,7 +61,7 @@ class WhatsAppInstance {
     async SendWebhook(type, body) {
         if (!this.allowWebhook) return
         this.axiosInstance
-            .post('', {
+            .post('main', {
                 type,
                 body,
             })
@@ -160,8 +160,8 @@ class WhatsAppInstance {
 
         // on recive new chat
         sock?.ev.on('chats.upsert', (newChat) => {
-            //console.log('chats.upsert')
-            //console.log(newChat)
+            console.log('chats.upsert')
+            console.log(newChat)
             const chats = newChat.map((chat) => {
                 return {
                     ...chat,
@@ -169,6 +169,7 @@ class WhatsAppInstance {
                 }
             })
             this.instance.chats.push(...chats)
+            logger.info(chats);
         })
 
         // on chat change
