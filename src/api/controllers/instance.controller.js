@@ -1,14 +1,11 @@
 const { WhatsAppInstance } = require('../class/instance')
 const fs = require('fs')
 const path = require('path')
-const config = require('../../config/config')
-const { Session } = require('../class/session')
 
 exports.init = async (req, res) => {
     const key = req.query.key
     const webhook = !req.query.webhook ? false : req.query.webhook
     const webhookUrl = !req.query.webhookUrl ? null : req.query.webhookUrl
-    const appUrl = config.appUrl || req.protocol + '://' + req.headers.host
     const instance = new WhatsAppInstance(key, webhook, webhookUrl)
     const data = await instance.init()
     WhatsAppInstances[data.key] = instance
@@ -16,20 +13,12 @@ exports.init = async (req, res) => {
         error: false,
         message: 'Initializing successfully',
         key: data.key,
-        webhook: {
-            enabled: webhook,
-            webhookUrl: webhookUrl,
-        },
-        qrcode: {
-            url: appUrl + '/instance/qr?key=' + data.key,
-        },
-        browser: config.browser,
     })
 }
 
 exports.qr = async (req, res) => {
     try {
-        const qrcode = await WhatsAppInstances[req.query.key]?.instance.qr
+        const qrcode = await WhatsAppInstances[req.query.key].instance.qr
         res.render('qrcode', {
             qrcode: qrcode,
         })
@@ -42,7 +31,7 @@ exports.qr = async (req, res) => {
 
 exports.qrbase64 = async (req, res) => {
     try {
-        const qrcode = await WhatsAppInstances[req.query.key]?.instance.qr
+        const qrcode = await WhatsAppInstances[req.query.key].instance.qr
         res.json({
             error: false,
             message: 'QR Base64 fetched successfully',
@@ -57,7 +46,7 @@ exports.qrbase64 = async (req, res) => {
 
 exports.info = async (req, res) => {
     const instance = WhatsAppInstances[req.query.key]
-    let data
+    let data = ''
     try {
         data = await instance.getInstanceDetail(req.query.key)
     } catch (error) {
@@ -66,14 +55,25 @@ exports.info = async (req, res) => {
     return res.json({
         error: false,
         message: 'Instance fetched successfully',
+        // instance_data: data,
         instance_data: data,
     })
 }
 
 exports.restore = async (req, res, next) => {
     try {
-        const session = new Session()
-        let restoredSessions = await session.restoreSessions()
+        let restoredSessions = []
+        const instances = fs.readdirSync(path.join(__dirname, `../sessiondata`))
+        instances.map((file) => {
+            if (file.includes('.json')) {
+                restoredSessions.push(file.replace('.json', ''))
+            }
+        })
+        restoredSessions.map((key) => {
+            const instance = new WhatsAppInstance(key)
+            instance.init()
+            WhatsAppInstances[key] = instance
+        })
         return res.json({
             error: false,
             message: 'All instances restored',
@@ -126,12 +126,12 @@ exports.list = async (req, res) => {
         })
     } else {
         let instance = []
-        const db = mongoClient.db('whatsapp-api')
-        const result = await db.listCollections().toArray()
-        result.forEach((collection) => {
-            instance.push(collection.name)
+        const sessions = fs.readdirSync(path.join(__dirname, `../sessiondata`))
+        sessions.map((file) => {
+            if (file.includes('.json')) {
+                instance.push(file.replace('.json', ''))
+            }
         })
-
         return res.json({
             error: false,
             message: 'All instance listed',

@@ -1,5 +1,4 @@
 const { downloadContentFromMessage } = require('@adiwajshing/baileys')
-const logger = require('pino')()
 
 module.exports = async function downloadMessage(msg, msgType) {
     let buffer = Buffer.from([])
@@ -9,7 +8,7 @@ module.exports = async function downloadMessage(msg, msgType) {
             buffer = Buffer.concat([buffer, chunk])
         }
     } catch {
-        return logger.info('error downloading file-message')
+        return console.log('error downloading file-message')
     }
     return buffer.toString('base64')
 }

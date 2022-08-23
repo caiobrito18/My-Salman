@@ -34,18 +34,3 @@ exports.blockUser = async (req, res) => {
             .status(201)
             .json({ error: false, message: 'Contact Unblocked' })
 }
-
-exports.updateProfilePicture = async (req, res) => {
-    const data = await WhatsAppInstances[req.query.key].updateProfilePicture(
-        req.body.id,
-        req.body.url
-    )
-    return res.status(201).json({ error: false, data: data })
-}
-
-exports.getUserOrGroupById = async (req, res) => {
-    const data = await WhatsAppInstances[req.query.key].getUserOrGroupById(
-        req.query.id
-    )
-    return res.status(201).json({ error: false, data: data })
-}

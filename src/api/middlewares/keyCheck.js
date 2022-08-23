@@ -1,4 +1,4 @@
-function keyVerification(req, res, next) {
+function keyVerifcation(req, res, next) {
     const key = req.query['key']?.toString()
     if (!key) {
         return res
@@ -14,4 +14,4 @@ function keyVerification(req, res, next) {
     next()
 }
 
-module.exports = keyVerification
+module.exports = keyVerifcation
