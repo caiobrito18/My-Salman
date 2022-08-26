@@ -221,7 +221,7 @@ class WhatsAppInstance {
         return {
             instance_key: key,
             phone_connected: this.instance?.online,
-            user: this.instance?.online ? this.instance.sock?.user : {},
+            user: this.instance.sock?.user,
         };
     }
 
