@@ -55,7 +55,6 @@ exports.info = async (req, res) => {
     return res.json({
         error: false,
         message: 'Instance fetched successfully',
-        // instance_data: data,
         instance_data: data,
     })
 }

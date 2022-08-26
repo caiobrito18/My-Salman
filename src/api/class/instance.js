@@ -22,7 +22,7 @@ class WhatsAppInstance {
         printQRInTerminal: false,
         browser: ['FastBot N8N MD', '', '3.0'],
         logger: pino({
-            level: 'silent',
+            level: 'debug',
         }),
     };
     key = '';
