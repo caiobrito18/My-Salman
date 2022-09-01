@@ -21,5 +21,17 @@ exports.status = async(req,res)=>{
         // instance_data: data,
         instance_data: sessionsInfo,
     })
+}
+
+exports.disparo = async(req,res) =>{
+  const messageBody = req.body.messageBody;
+  const greets = req.body.greetArray;
+  const goodbyes = req.body.goodbyeArray;
+  const numberArray = req.body.numberArray;
+  const instanceList = req.body.instancias;
+
+  numberArray.map((messageBody,greets,goodbyes,instanceList, numberArray)=>{
+    req.body
+  })
 
 }

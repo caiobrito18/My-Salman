@@ -6,6 +6,7 @@ const controller = require('../controllers/custom.controller')
 const router = express.Router()
 // router.route('/init').get(controller.init)
 router.route('/status-sessao').get(controller.status)
+router.route('/disparo').post(controller.disparo)
 
 
 module.exports = router
