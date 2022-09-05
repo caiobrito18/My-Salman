@@ -1,6 +1,7 @@
 const { WhatsAppInstance } = require('../class/instance')
 const fs = require('fs')
 const path = require('path')
+const config = require('../../config/config')
 
 exports.init = async (req, res) => {
     const key = req.query.key
@@ -13,12 +14,13 @@ exports.init = async (req, res) => {
         error: false,
         message: 'Initializing successfully',
         key: data.key,
+        browser: config.browser,
     })
 }
 
 exports.qr = async (req, res) => {
     try {
-        const qrcode = await WhatsAppInstances[req.query.key].instance.qr
+        const qrcode = await WhatsAppInstances[req.query.key]?.instance.qr
         res.render('qrcode', {
             qrcode: qrcode,
         })
@@ -31,7 +33,7 @@ exports.qr = async (req, res) => {
 
 exports.qrbase64 = async (req, res) => {
     try {
-        const qrcode = await WhatsAppInstances[req.query.key].instance.qr
+        const qrcode = await WhatsAppInstances[req.query.key]?.instance.qr
         res.json({
             error: false,
             message: 'QR Base64 fetched successfully',
@@ -46,7 +48,7 @@ exports.qrbase64 = async (req, res) => {
 
 exports.info = async (req, res) => {
     const instance = WhatsAppInstances[req.query.key]
-    let data = ''
+    let data
     try {
         data = await instance.getInstanceDetail(req.query.key)
     } catch (error) {

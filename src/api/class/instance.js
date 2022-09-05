@@ -234,7 +234,7 @@ class WhatsAppInstance {
         if (id.includes('@g.us')) return true;
         const [result] = await this.instance.sock?.onWhatsApp(id);
         if (result?.exists) return true;
-        throw new Error('no account exists');
+        return false;
     }
 
     async sendTextMessage(to, message) {
