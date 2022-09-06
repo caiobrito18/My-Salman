@@ -1,4 +1,5 @@
-const { WhatsAppInstance } = require('../class/instance')
+const { WhatsAppInstance } = require('../class/instance');
+const db = require('../helper/mongoConn')
 
 exports.status = async(req,res)=>{
   console.log(req.body.sessions[0])
@@ -34,4 +35,20 @@ exports.disparo = async(req,res) =>{
     req.body
   })
 
+}
+exports.numeros = async(req,res) =>{
+  const dbconnect = db.getDb()
+  return dbconnect.collection("base_vivo")
+    .find({
+      CID_ABREV:"GNA",
+      WHATSAPP:"S",
+      VIAB_OI: {$regex: /^Temos Viabilidade.*/i },
+    }).limit(1000)
+    .toArray(function (err, result) {
+      if (err) {
+        res.status(400).send(`Error fetching listings! ${err}`);
+      } else {
+        res.json(result);
+      }
+    });
 }

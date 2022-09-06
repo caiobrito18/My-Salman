@@ -4,8 +4,10 @@ const cors  = require('cors')
 const exceptionHandler = require('express-exception-handler')
 exceptionHandler.handle()
 const app = express()
+const db = require('../api/helper/mongoConn')
 const error = require('../api/middlewares/error')
 
+db.connectToServer();
 app.use(cors({
   origin:'*'
 }))
