@@ -1,4 +1,3 @@
-const { WhatsAppInstance } = require('../class/instance');
 const db = require('../helper/mongoConn')
 
 exports.status = async(req,res)=>{
@@ -24,7 +23,7 @@ exports.status = async(req,res)=>{
     })
 }
 
-exports.disparo = async(req,res) =>{
+/* exports.disparo = async(req,res) =>{
   const messageBody = req.body.messageBody;
   const greets = req.body.greetArray;
   const goodbyes = req.body.goodbyeArray;
@@ -35,7 +34,7 @@ exports.disparo = async(req,res) =>{
     req.body
   })
 
-}
+} */
 exports.numeros = async(req,res) =>{
   const dbconnect = db.getDb()
   return dbconnect.collection("base_vivo")
