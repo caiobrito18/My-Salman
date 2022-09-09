@@ -38,11 +38,38 @@ exports.status = async(req,res)=>{
 exports.numeros = async(req,res) =>{
   const dbconnect = db.getDb()
   return dbconnect.collection("base_vivo")
-    .find({
-      CID_ABREV:"GNA",
-      WHATSAPP:"S",
-      VIAB_OI: {$regex: /^Temos Viabilidade.*/i },
-    }).limit(1000)
+  .aggregate(
+    [
+        {
+            "$match": {
+                "WHATSAPP": "S",
+                "CID_ABREV": {
+                    "$in": [
+                        "GNA",
+                        "MNS"
+                    ]
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": {
+                    "TELEFONE": "$TELEFONE",
+                    "CID_ABREV": "$CID_ABREV"
+                }
+            }
+        },
+        {
+            "$project": {
+                "CID_ABREV": "$_id.CID_ABREV",
+                "TELEFONE": "$_id.TELEFONE",
+                "_id": 0
+            }
+        },
+        {
+            "$limit": 1000
+        }
+    ])
     .toArray(function (err, result) {
       if (err) {
         res.status(400).send(`Error fetching listings! ${err}`);
