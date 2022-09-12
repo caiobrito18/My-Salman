@@ -16,6 +16,7 @@ app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true }))
 app.set('view engine', 'ejs')
 app.set('views', path.join(__dirname, '../api/views'))
+
 // app.use(express.static(path.join(__dirname, 'public')));
 global.WhatsAppInstances = {}
 

@@ -1,7 +1,7 @@
-const db = require('../helper/mongoConn')
+const db = require('../helper/mongoConn');
+const sleep = require('../helper/sleep');
 
 exports.status = async(req,res)=>{
-  console.log(req.body.sessions[0])
   const sessions = req.body.sessions
   let sessionsInfo = new Array
   for(let i = 0; i < sessions.length; i++){
@@ -23,18 +23,52 @@ exports.status = async(req,res)=>{
     })
 }
 
-/* exports.disparo = async(req,res) =>{
-  const messageBody = req.body.messageBody;
-  const greets = req.body.greetArray;
-  const goodbyes = req.body.goodbyeArray;
-  const numberArray = req.body.numberArray;
-  const instanceList = req.body.instancias;
+exports.disparo = async(req,res) =>{
+  const dados = req.body.MessageData;
+  const numeros =  req.body.Numbers;
+  const minWait =  req.body.minWait;
+  const maxWait =  req.body.maxWait;
+  const corpo = dados.MessageBody;
+  const saudacoes = dados.greets;
+  const despedidas = dados.goodbyes;
+  const sessoes = dados.sessions;
 
-  numberArray.map((messageBody,greets,goodbyes,instanceList, numberArray)=>{
-    req.body
+  console.log(req.body);
+
+  const data = numeros.map(async(numero)=>{
+    var rand1 = Math.floor(Math.random() * (despedidas.length));
+    var rand2 = Math.floor(Math.random() * (saudacoes.length));
+    var rand3 = Math.floor(Math.random() * (sessoes.length));
+    var time = Math.floor(Math.random() * ( maxWait - minWait)) + minWait;
+
+    let randGoodbye = (despedidas[rand1])
+    let randGreet = saudacoes[rand2]
+    let mensagem = [randGreet,corpo,randGoodbye].join('\n')
+    let chave = sessoes[rand3];
+    console.log({
+      numero,
+      randGoodbye,
+      randGreet,
+      mensagem,
+      chave
+    })
+    await new Promise((r => {setTimeout(r, time*1000)}))
+    await WhatsAppInstances[chave].sendTextMessage(
+      numero,
+      mensagem
+      )
+
   })
+  // numberArray.map((messageBody,greets,goodbyes,instanceList, numberArray)=>{
+    //   let randGoodbye = (goodbyeArray[rand1])
+    //   let randGreet = greetArray[rand2]
+    //   let mensagem = [randGreet,messageBody,randGoodbye].join('\n')
+    //   let chave = sessoes[rand3].sessao;
+    // })
+    
+    return res.status(201).json({ error: false, data: data })
+}
 
-} */
 exports.numeros = async(req,res) =>{
   const dbconnect = db.getDb()
   return dbconnect.collection("base_vivo")
@@ -67,7 +101,7 @@ exports.numeros = async(req,res) =>{
             }
         },
         {
-            "$limit": 1000
+            "$limit": 100
         }
     ])
     .toArray(function (err, result) {
