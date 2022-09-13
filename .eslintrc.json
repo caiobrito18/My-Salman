@@ -10,9 +10,10 @@
         "node": true
     },
     "rules": {
-        "no-console": "warn",
         "no-undefined": "warn",
-        "no-unused-vars": "warn"
+        "no-unused-vars": "warn",
+        "quotes":"warn",
+        "indent":["warn",2]
     },
     "globals": {
         "WhatsAppInstances": true,
