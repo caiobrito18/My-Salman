@@ -13,7 +13,8 @@
         "no-undefined": "warn",
         "no-unused-vars": "warn",
         "quotes":"warn",
-        "indent":["warn",2]
+        "indent":["warn",2],
+        "semi":"warn"
     },
     "globals": {
         "WhatsAppInstances": true,
