@@ -76,8 +76,8 @@ exports.disparo = async(req,res) =>{
 exports.numeros = async(req,res) =>{
   const dbconnect = db.getDb();
   const filter = req.body?.filter;
-  const limit = req.body.limit;
-  const hood = filter.bairro;
+  const limit = req.body?.limit;
+  const hood = filter?.bairro;
 
   return dbconnect.collection("base_vivo")
     .aggregate(
@@ -89,12 +89,13 @@ exports.numeros = async(req,res) =>{
               "$in": filter?.cid
             }: {"$ne":null},
             "ENVIADO":{"$not":/[1-9]/},
-            "BAIRRO":{"$regex" : hood, "$options" : "i"}
+            "BAIRRO":{"$regex" : filter?.bairro || "", "$options" : "i"}
           }
         },
         {
           "$group": {
             "_id": {
+              "id":"$id",
               "TELEFONE": "$TELEFONE",
               "CID_ABREV": "$CID_ABREV",
               "BAIRRO": "$BAIRRO"
@@ -105,7 +106,8 @@ exports.numeros = async(req,res) =>{
           "$project": {
             "CID_ABREV": "$_id.CID_ABREV",
             "TELEFONE": "$_id.TELEFONE",
-            "_id": 0
+            "BAIRRO": "$_id.BAIRRO",
+            "_id": "$_id.id"
           }
         },
         {
