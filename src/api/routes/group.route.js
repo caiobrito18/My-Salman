@@ -1,23 +1,23 @@
-const express = require('express')
-const controller = require('../controllers/group.controller')
-const keyVerify = require('../middlewares/keyCheck')
-const loginVerify = require('../middlewares/loginCheck')
+const express = require("express");
+const controller = require("../controllers/group.controller");
+const keyVerify = require("../middlewares/keyCheck");
+const loginVerify = require("../middlewares/loginCheck");
 
-const router = express.Router()
+const router = express.Router();
 
-router.route('/create').post(keyVerify, loginVerify, controller.create)
-router.route('/listall').get(keyVerify, loginVerify, controller.listAll)
-router.route('/leave').get(keyVerify, loginVerify, controller.leaveGroup)
+router.route("/create").post(keyVerify, loginVerify, controller.create);
+router.route("/listall").get(keyVerify, loginVerify, controller.listAll);
+router.route("/leave").get(keyVerify, loginVerify, controller.leaveGroup);
 
 router
-    .route('/inviteuser')
-    .post(keyVerify, loginVerify, controller.addNewParticipant)
-router.route('/makeadmin').post(keyVerify, loginVerify, controller.makeAdmin)
+  .route("/inviteuser")
+  .post(keyVerify, loginVerify, controller.addNewParticipant);
+router.route("/makeadmin").post(keyVerify, loginVerify, controller.makeAdmin);
 router
-    .route('/demoteadmin')
-    .post(keyVerify, loginVerify, controller.demoteAdmin)
+  .route("/demoteadmin")
+  .post(keyVerify, loginVerify, controller.demoteAdmin);
 router
-    .route('/getinvitecode')
-    .get(keyVerify, loginVerify, controller.getInviteCodeGroup)
+  .route("/getinvitecode")
+  .get(keyVerify, loginVerify, controller.getInviteCodeGroup);
 
-module.exports = router
+module.exports = router;

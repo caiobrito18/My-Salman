@@ -77,19 +77,20 @@ exports.numeros = async(req,res) =>{
   const dbconnect = db.getDb();
   const filter = req.body?.filter;
   const limit = req.body?.limit;
-  const hood = filter?.bairro;
 
   return dbconnect.collection("base_vivo")
     .aggregate(
       [
         {
           "$match": {
-            "WHATSAPP": filter?.whats ||{"$ne":null},
+            "WHATSAPP":"S",
             "CID_ABREV": filter?.cid ? {
               "$in": filter?.cid
             }: {"$ne":null},
             "ENVIADO":{"$not":/[1-9]/},
-            "BAIRRO":{"$regex" : filter?.bairro || "", "$options" : "i"}
+            "BAIRRO":{"$regex" : filter?.bairro || "", "$options" : "i"},
+            "UF":filter?.uf || {"$ne":null},
+            "CEP":filter?.cep || {"$ne":null}
           }
         },
         {
@@ -97,17 +98,19 @@ exports.numeros = async(req,res) =>{
             "_id": {
               "id":"$id",
               "TELEFONE": "$TELEFONE",
-              "CID_ABREV": "$CID_ABREV",
-              "BAIRRO": "$BAIRRO"
+              "CID": "$CIDADE",
+              "BAIRRO": "$BAIRRO",
+              "UF": "$UF"
             }
           }
         },
         {
           "$project": {
-            "CID_ABREV": "$_id.CID_ABREV",
+            "UF":"$_id.UF",
+            "CID_ABREV": "$_id.CID",
             "TELEFONE": "$_id.TELEFONE",
             "BAIRRO": "$_id.BAIRRO",
-            "_id": "$_id.id"
+            "_id": 0
           }
         },
         {
@@ -135,4 +138,43 @@ exports.states = async(req,res)=>{
   });
   
 
+};
+exports.cidades = async(req,res) =>{
+  const dbconnect = db.getDb();
+  const filter = req.body?.filter;
+  const limit = req.body?.limit;
+
+  return dbconnect.collection("base_vivo")
+    .aggregate(
+      [
+        {
+          "$match": {
+            "UF":filter?.uf
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "CID": "$CIDADE"
+            }
+          }
+        },
+        {
+          "$project": {
+            "UF":"$_id.UF",
+            "CIDADE": "$_id.CID",
+            "_id":0
+          }
+        },
+        {
+          "$limit": limit || 100
+        }
+      ])
+    .toArray(function (err, result) {
+      if (err) {
+        res.status(500).send(`Error fetching listings! ${err}`);
+      } else {
+        res.json(result);
+      }
+    });
 };
