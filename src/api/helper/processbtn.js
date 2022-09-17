@@ -2,27 +2,27 @@ module.exports = function processButton(buttons) {
   const preparedButtons = [];
 
   buttons.map((button) => {
-    if (button.type == "replyButton") {
+    if (button.type == 'replyButton') {
       preparedButtons.push({
         quickReplyButton: {
-          displayText: button.title ?? "",
+          displayText: button.title ?? '',
         },
       });
     }
 
-    if (button.type == "callButton") {
+    if (button.type == 'callButton') {
       preparedButtons.push({
         callButton: {
-          displayText: button.title ?? "",
-          phoneNumber: button.payload ?? "",
+          displayText: button.title ?? '',
+          phoneNumber: button.payload ?? '',
         },
       });
     }
-    if (button.type == "urlButton") {
+    if (button.type == 'urlButton') {
       preparedButtons.push({
         urlButton: {
-          displayText: button.title ?? "",
-          url: button.payload ?? "",
+          displayText: button.title ?? '',
+          url: button.payload ?? '',
         },
       });
     }

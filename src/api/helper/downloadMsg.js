@@ -1,4 +1,4 @@
-const { downloadContentFromMessage } = require("@adiwajshing/baileys");
+const { downloadContentFromMessage } = require('@adiwajshing/baileys');
 
 module.exports = async function downloadMessage(msg, msgType) {
   let buffer = Buffer.from([]);
@@ -8,7 +8,7 @@ module.exports = async function downloadMessage(msg, msgType) {
       buffer = Buffer.concat([buffer, chunk]);
     }
   } catch {
-    return console.log("error downloading file-message");
+    return console.log('error downloading file-message');
   }
-  return buffer.toString("base64");
+  return buffer.toString('base64');
 };

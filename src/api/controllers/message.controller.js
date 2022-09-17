@@ -11,7 +11,7 @@ exports.Image = async (req, res) => {
     req.body.id,
     req.body.path,
     req.body.file,
-    "image",
+    'image',
     req.body?.caption,
     req.body.mimetype
   );
@@ -23,7 +23,7 @@ exports.Video = async (req, res) => {
     req.body.id,
     req.body.path,
     req.body.file,
-    "video",
+    'video',
     req.body?.caption,
     req.body.mimetype
   );
@@ -35,7 +35,7 @@ exports.Audio = async (req, res) => {
     req.body.id,
     req.body.path,
     req.body.file,
-    "audio",
+    'audio',
     req.body.mimetype
   );
   return res.status(201).json({ error: false, data: data });
@@ -46,8 +46,8 @@ exports.Document = async (req, res) => {
     req.body.id,
     req.body.path,
     req.body.file,
-    "document",
-    "",
+    'document',
+    '',
     req.body.mimetype,
     req.body.filename
   );
@@ -128,8 +128,7 @@ exports.TemplateButton = async (req, res) => {
 exports.Pix = async (req, res) => {
   const data = await WhatsAppInstances[req.query.key].sendMediaPix(
     req.body.id,
-    req.body.base64code,
+    req.body.base64code
   );
   return res.status(201).json({ error: false, data: data });
 };
-

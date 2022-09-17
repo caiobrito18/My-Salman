@@ -1,7 +1,7 @@
-const { WhatsAppInstance } = require("../class/instance");
-const fs = require("fs");
-const path = require("path");
-const config = require("../../config/config");
+const { WhatsAppInstance } = require('../class/instance');
+const fs = require('fs');
+const path = require('path');
+const config = require('../../config/config');
 
 exports.init = async (req, res) => {
   const key = req.query.key;
@@ -12,7 +12,7 @@ exports.init = async (req, res) => {
   WhatsAppInstances[data.key] = instance;
   res.json({
     error: false,
-    message: "Initializing successfully",
+    message: 'Initializing successfully',
     key: data.key,
     browser: config.browser,
   });
@@ -21,12 +21,12 @@ exports.init = async (req, res) => {
 exports.qr = async (req, res) => {
   try {
     const qrcode = await WhatsAppInstances[req.query.key]?.instance.qr;
-    res.render("qrcode", {
+    res.render('qrcode', {
       qrcode: qrcode,
     });
   } catch {
     res.json({
-      qrcode: "",
+      qrcode: '',
     });
   }
 };
@@ -36,12 +36,12 @@ exports.qrbase64 = async (req, res) => {
     const qrcode = await WhatsAppInstances[req.query.key]?.instance.qr;
     res.json({
       error: false,
-      message: "QR Base64 fetched successfully",
+      message: 'QR Base64 fetched successfully',
       qrcode: qrcode,
     });
   } catch {
     res.json({
-      qrcode: "",
+      qrcode: '',
     });
   }
 };
@@ -56,7 +56,7 @@ exports.info = async (req, res) => {
   }
   return res.json({
     error: false,
-    message: "Instance fetched successfully",
+    message: 'Instance fetched successfully',
     instance_data: data,
   });
 };
@@ -64,10 +64,10 @@ exports.info = async (req, res) => {
 exports.restore = async (req, res, next) => {
   try {
     let restoredSessions = [];
-    const instances = fs.readdirSync(path.join(__dirname, "../sessiondata"));
+    const instances = fs.readdirSync(path.join(__dirname, '../sessiondata'));
     instances.map((file) => {
-      if (file.includes(".json")) {
-        restoredSessions.push(file.replace(".json", ""));
+      if (file.includes('.json')) {
+        restoredSessions.push(file.replace('.json', ''));
       }
     });
     restoredSessions.map((key) => {
@@ -77,7 +77,7 @@ exports.restore = async (req, res, next) => {
     });
     return res.json({
       error: false,
-      message: "All instances restored",
+      message: 'All instances restored',
       data: restoredSessions,
     });
   } catch (error) {
@@ -94,7 +94,7 @@ exports.logout = async (req, res) => {
   }
   return res.json({
     error: false,
-    message: "logout successfull",
+    message: 'logout successfull',
     errormsg: errormsg ? errormsg : null,
   });
 };
@@ -109,7 +109,7 @@ exports.delete = async (req, res) => {
   }
   return res.json({
     error: false,
-    message: "Instance deleted successfully",
+    message: 'Instance deleted successfully',
     data: errormsg ? errormsg : null,
   });
 };
@@ -122,20 +122,20 @@ exports.list = async (req, res) => {
     let data = await Promise.all(instance);
     return res.json({
       error: false,
-      message: "All active instance",
+      message: 'All active instance',
       data: data,
     });
   } else {
     let instance = [];
-    const sessions = fs.readdirSync(path.join(__dirname, "../sessiondata"));
+    const sessions = fs.readdirSync(path.join(__dirname, '../sessiondata'));
     sessions.map((file) => {
-      if (file.includes(".json")) {
-        instance.push(file.replace(".json", ""));
+      if (file.includes('.json')) {
+        instance.push(file.replace('.json', ''));
       }
     });
     return res.json({
       error: false,
-      message: "All instance listed",
+      message: 'All instance listed',
       data: instance,
     });
   }
