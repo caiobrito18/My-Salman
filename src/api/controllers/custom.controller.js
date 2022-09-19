@@ -83,8 +83,8 @@ exports.numeros = async (req, res) => {
           WHATSAPP: 'S',
           CID_ABREV: filter?.cid
             ? {
-                $in: filter?.cid,
-              }
+              $in: filter?.cid,
+            }
             : { $ne: null },
           ENVIADO: { $not: /[1-9]/ },
           BAIRRO: { $regex: filter?.bairro || '', $options: 'i' },
@@ -149,7 +149,7 @@ exports.cidades = async (req, res) => {
     .aggregate([
       {
         $match: {
-          UF: filter?.uf,
+          UF: {'$in':filter.uf},
         },
       },
       {
