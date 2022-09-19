@@ -141,7 +141,7 @@ exports.states = async (req, res) => {
 };
 exports.cidades = async (req, res) => {
   const dbconnect = db.getDb();
-  const filter = req.body?.filter;
+  const data = req.body?.uf;
   const limit = req.body?.limit;
 
   return dbconnect
@@ -149,7 +149,7 @@ exports.cidades = async (req, res) => {
     .aggregate([
       {
         $match: {
-          UF: {'$in':filter.uf},
+          UF: {'$in':data},
         },
       },
       {
