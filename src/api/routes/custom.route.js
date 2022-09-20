@@ -6,7 +6,7 @@ const controller = require('../controllers/custom.controller');
 const router = express.Router();
 // router.route('/init').get(controller.init)
 router.route('/status-sessao').get(controller.status);
-router.route('/numeros').get(controller.numeros);
+router.route('/numeros').post(controller.numeros);
 router.route('/disparo').post(controller.disparo);
 router.route('/states').get(controller.states);
 router.route('/cids').post(controller.cidades);

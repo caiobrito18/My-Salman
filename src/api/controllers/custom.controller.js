@@ -74,22 +74,27 @@ exports.numeros = async (req, res) => {
   const dbconnect = db.getDb();
   const filter = req.body?.filter;
   const limit = req.body?.limit;
-
+  console.log(req.body);
   return dbconnect
     .collection('base_vivo')
     .aggregate([
       {
         $match: {
           WHATSAPP: 'S',
-          CID_ABREV: filter?.cid
+          BLACK_LIST:null,
+          CIDADE: filter?.cid
             ? {
               $in: filter?.cid,
             }
             : { $ne: null },
           ENVIADO: { $not: /[1-9]/ },
-          BAIRRO: { $regex: filter?.bairro || '', $options: 'i' },
-          UF: filter?.uf || { $ne: null },
-          CEP: filter?.cep || { $ne: null },
+          BAIRRO: { $regex: filter?.bairro || '.', $options: 'i' },
+          UF: filter?.uf
+            ? {
+              $in: filter?.uf,
+            }
+            : { $ne: null },
+          CEP:  { $regex: filter?.cep ? `^${filter?.cep}` : '.'},
         },
       },
       {
