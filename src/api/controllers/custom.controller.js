@@ -75,27 +75,30 @@ exports.numeros = async (req, res) => {
   const filter = req.body?.filter;
   const limit = req.body?.limit;
   console.log(req.body);
+
+  let query = {
+    // WHATSAPP: 'S',
+    // BLACK_LIST:null,
+    // ENVIADO: { $not: /[1-9]/ }
+  };
+  
+  if(filter?.cid) query['CIDADE'] = {$in: filter?.cid};
+  
+  if(filter?.bairro) query['BAIRRO'] = {$regex: filter?.bairro, $options: 'i' };
+
+  if(filter?.uf) query['UF'] = {$in: filter?.uf};
+
+  if(filter?.cep) query['CEP'] = {$regex: filter.cep, $options: 'i' };
+
+  console.log(query);
   return dbconnect
-    .collection('base_vivo')
+    .collection('base_vivo_total')
     .aggregate([
       {
-        $match: {
-          WHATSAPP: 'S',
-          BLACK_LIST:null,
-          CIDADE: filter?.cid
-            ? {
-              $in: filter?.cid,
-            }
-            : { $ne: null },
-          ENVIADO: { $not: /[1-9]/ },
-          BAIRRO: { $regex: filter?.bairro || '.', $options: 'i' },
-          UF: filter?.uf
-            ? {
-              $in: filter?.uf,
-            }
-            : { $ne: null },
-          CEP:  { $regex: filter?.cep ? `^${filter?.cep}` : '.'},
-        },
+        $limit: limit || 100,
+      },
+      {
+        $match: query,
       },
       {
         $group: {
@@ -116,9 +119,6 @@ exports.numeros = async (req, res) => {
           BAIRRO: '$_id.BAIRRO',
           _id: 0,
         },
-      },
-      {
-        $limit: limit || 100,
       },
     ])
     .toArray(function (err, result) {
