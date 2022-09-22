@@ -83,22 +83,21 @@ exports.numeros = async (req, res) => {
   };
   
   if(filter?.cid) query['CIDADE'] = {$in: filter?.cid};
-  
-  if(filter?.bairro) query['BAIRRO'] = {$regex: filter?.bairro, $options: 'i' };
-
   if(filter?.uf) query['UF'] = {$in: filter?.uf};
-
-  if(filter?.cep) query['CEP'] = {$regex: filter.cep, $options: 'i' };
+  if(filter?.cep) query['CEP'] = {$regex: filter.cep};
+  if(filter?.bairro) query['BAIRRO'] = {$regex: filter?.bairro, $options: 'i' };
+  if(filter?.endereco) query['ENDERECO'] = {$regex: filter.endereco, $options: 'i'};
+  if(filter?.complemento) query['COMPLEMENTO'] = {$regex: filter.complemento, $options: 'i'};
 
   console.log(query);
   return dbconnect
     .collection('base_vivo_total')
     .aggregate([
       {
-        $limit: limit || 100,
+        $match: query,
       },
       {
-        $match: query,
+        $limit: limit || 100,
       },
       {
         $group: {
