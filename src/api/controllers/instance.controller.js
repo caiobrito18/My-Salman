@@ -105,6 +105,9 @@ exports.delete = async (req, res) => {
     await WhatsAppInstances[req.query.key].instance?.sock?.logout();
     delete WhatsAppInstances[req.query.key];
   } catch (error) {
+    if(error === 'phone isn\'t connected' )
+      fs.rm(path.join(__dirname, '../sessiondata',`${req.query.key}.json`));
+    delete WhatsAppInstances[req.query.key];
     errormsg = error;
   }
   return res.json({
