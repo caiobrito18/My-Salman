@@ -60,13 +60,12 @@ class WhatsAppInstance {
   }
 
   async init() {
-    if(!this.instance.sock){
-      this.socketConfig.auth = this.authState.state;
-      this.instance.sock = makeWASocket(this.socketConfig);
-      this.setHandler();
-      return this;}
-    return;
+    this.socketConfig.auth = this.authState.state;
+    this.instance.sock = makeWASocket(this.socketConfig);
+    this.setHandler();
+    return this;
   }
+  
 
   setHandler() {
     const sock = this.instance.sock;
