@@ -60,10 +60,12 @@ class WhatsAppInstance {
   }
 
   async init() {
-    this.socketConfig.auth = this.authState.state;
-    this.instance.sock = makeWASocket(this.socketConfig);
-    this.setHandler();
-    return this;
+    if(!this.instance.sock){
+      this.socketConfig.auth = this.authState.state;
+      this.instance.sock = makeWASocket(this.socketConfig);
+      this.setHandler();
+      return this;}
+    return;
   }
 
   setHandler() {
@@ -75,7 +77,7 @@ class WhatsAppInstance {
     sock?.ev.on('connection.update', async (update) => {
       const { connection, lastDisconnect, qr } = update;
 
-      if (connection == 'connecting') return;
+      if (connection === 'connecting') return;
 
       if (connection === 'close') {
         // reconnect if not logged out
@@ -180,27 +182,27 @@ class WhatsAppInstance {
         }
         if (config.webhookBase64) {
           switch (messageType) {
-            case 'imageMessage':
-              webhookData['msgContent'] = await downloadMessage(
-                msg.message.imageMessage,
-                'image'
-              );
-              break;
-            case 'videoMessage':
-              webhookData['msgContent'] = await downloadMessage(
-                msg.message.videoMessage,
-                'video'
-              );
-              break;
-            case 'audioMessage':
-              webhookData['msgContent'] = await downloadMessage(
-                msg.message.audioMessage,
-                'audio'
-              );
-              break;
-            default:
-              webhookData['msgContent'] = '';
-              break;
+          case 'imageMessage':
+            webhookData['msgContent'] = await downloadMessage(
+              msg.message.imageMessage,
+              'image'
+            );
+            break;
+          case 'videoMessage':
+            webhookData['msgContent'] = await downloadMessage(
+              msg.message.videoMessage,
+              'video'
+            );
+            break;
+          case 'audioMessage':
+            webhookData['msgContent'] = await downloadMessage(
+              msg.message.audioMessage,
+              'audio'
+            );
+            break;
+          default:
+            webhookData['msgContent'] = '';
+            break;
           }
         }
 
