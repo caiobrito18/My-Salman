@@ -182,3 +182,35 @@ exports.cidades = async (req, res) => {
       }
     });
 };
+
+exports.campaingsCreate = async(req,res)=>{
+  const dbconnect = db.getDb();
+  const data = req.body;
+  // {
+  //   status,
+  //   numeros,
+  //   nomes,
+  //   primeiraConexão,
+  //   ultimaConexão,
+  //   campanha
+  // }
+  dbconnect.collection('l_sesssoes').updateOne(
+    {
+      NUMEROS:data.numbers
+    },
+    {
+      STATUS:data?.status,
+      NUMEROS:data?.numbers,
+      NOMES:data?.names,
+      CRIACAO: new Date(),
+      CAMPANHA: data?.campaing,
+    },
+    {
+      upsert: true,
+    },
+    function (err) {
+      if (err) throw err;
+      res.status(500).send('error',err);
+    });
+  return res.status(203).send('sucesso na criação da campanha');
+};
