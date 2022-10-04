@@ -70,10 +70,12 @@ exports.restore = async (req, res, next) => {
         restoredSessions.push(file.replace('.json', ''));
       }
     });
-    restoredSessions.map((key) => {
+    restoredSessions.map(async(key) => {
       const instance = new WhatsAppInstance(key);
-      instance.init();
-      WhatsAppInstances[key] = instance;
+      if(WhatsAppInstances[key] === undefined){
+        await instance.init().catch(error => console.log(error));
+        WhatsAppInstances[key] = instance;
+      }
     });
     return res.json({
       error: false,
@@ -89,6 +91,7 @@ exports.logout = async (req, res) => {
   let errormsg;
   try {
     await WhatsAppInstances[req.query.key].instance?.sock?.logout();
+    delete WhatsAppInstances[req.query.key];
   } catch (error) {
     errormsg = error;
   }
@@ -105,10 +108,10 @@ exports.delete = async (req, res) => {
     await WhatsAppInstances[req.query.key].instance?.sock?.logout();
     delete WhatsAppInstances[req.query.key];
   } catch (error) {
-    if(error === 'phone isn\'t connected' )
+    if(error === 'phone isn\'t connected' ){
       fs.rm(path.join(__dirname, '../sessiondata',`${req.query.key}.json`));
-    delete WhatsAppInstances[req.query.key];
-    errormsg = error;
+      delete WhatsAppInstances[req.query.key];
+      errormsg = error;}
   }
   return res.json({
     error: false,
