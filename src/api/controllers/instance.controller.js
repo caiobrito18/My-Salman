@@ -2,6 +2,7 @@ const { WhatsAppInstance } = require('../class/instance');
 const fs = require('fs');
 const path = require('path');
 const config = require('../../config/config');
+const db = require('../helper/mongoConn');
 
 exports.init = async (req, res) => {
   const key = req.query.key;
@@ -48,6 +49,7 @@ exports.qrbase64 = async (req, res) => {
 
 exports.info = async (req, res) => {
   const instance = WhatsAppInstances[req.query.key];
+  console.log(instance);
   let data;
   try {
     data = await instance.getInstanceDetail(req.query.key);
@@ -75,6 +77,20 @@ exports.restore = async (req, res, next) => {
       if(WhatsAppInstances[key] === undefined){
         await instance.init().catch(error => console.log(error));
         WhatsAppInstances[key] = instance;
+        const details = instance.authState.state.creds;
+        await db.getDb().collection('d_sessoes').updateOne(
+          {
+            KEY:key
+          },
+          {
+            '$set':{INSTANCE: details.me,
+              KEY:key,
+              LAST_LOGIN:Date(details.lastAccountSyncTimestamp)}
+          },
+          {
+            upsert:true
+          }
+        );
       }
     });
     return res.json({

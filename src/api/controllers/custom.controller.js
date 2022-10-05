@@ -1,4 +1,5 @@
 const db = require('../helper/mongoConn');
+const { WhatsAppInstance } = require('../class/instance');
 
 exports.status = async (req, res) => {
   const sessions = req.body.sessions;
@@ -71,7 +72,7 @@ exports.disparo = async (req, res) => {
 };
 
 exports.numeros = async (req, res) => {
-  const dbconnect = db.getDb();
+  const dbconnect = db.getDb();  
   const filter = req.body?.filter;
   const limit = req.body?.limit;
   console.log(req.body);
@@ -130,7 +131,7 @@ exports.numeros = async (req, res) => {
 };
 
 exports.states = async (req, res) => {
-  const dbconnect = db.getDb();
+  const dbconnect = db.getDb();  
   res.status(202);
   return await dbconnect
     .collection('bv_view_uf')
@@ -144,7 +145,7 @@ exports.states = async (req, res) => {
     });
 };
 exports.cidades = async (req, res) => {
-  const dbconnect = db.getDb();
+  const dbconnect = db.getDb();  
   const data = req.body?.uf;
   const limit = req.body?.limit;
 
@@ -183,34 +184,76 @@ exports.cidades = async (req, res) => {
     });
 };
 
-exports.campaingsCreate = async(req,res)=>{
-  const dbconnect = db.getDb();
+exports.campaings = {
+  create:(
+    async(req,res)=>{
+      const dbconnect = db.getDb();
+      const data = req.body;
+      // {
+      //   status,
+      //   numeros,
+      //   nomes,
+      //   primeiraConexão,
+      //   ultimaConexão,
+      //   campanha
+      // }
+      dbconnect.collection('l_sessoes').insertOne(
+        {
+          STATUS:data?.status,
+          NUMEROS:data?.numbers,
+          NOMES:data?.names,
+          CreatedAt: new Date(),
+          CAMPANHA: data?.campaign,
+        },
+        function (err) {
+          if(err) res.status(500).send(`error ${err}`);
+        });
+      return res.status(201).send('sucesso na criação da campanha');
+    }),
+  update:(
+    async(req,res)=>{
+      const dbconnect = db.getDb();
+      const data = req.body;
+      const updates = {
+        UpdatedAt:new Date(),
+      };
+      if(data?.status) updates['STATUS'] = data.status;
+      if(data?.status) updates['NUMEROS'] = data.numbers;
+      if(data?.status) updates['NOMES'] = data.names;
+
+      console.log(updates);
+      dbconnect.collection('l_sessoes').updateOne(
+        {
+          CAMPANHA:data?.campaign
+        },
+        {'$set':{...updates}},
+        {
+          upsert:true
+        });
+      return res.status(201).send('sucesso na criação da campanha');
+    }),
+  get:(
+    async(req,res)=>{
+      const dbconnect = db.getDb();
+      return await dbconnect
+        .collection('l_sessoes')
+        .find()
+        .toArray(
+          function (err, result) {
+            if (err) {
+              res.status(500).send(`Error fetching listings! ${err}`);
+            } else {
+              res.json(result);
+            }
+          });
+      
+    }
+  )
+};
+
+exports.test = async(req,res)=>{
   const data = req.body;
-  // {
-  //   status,
-  //   numeros,
-  //   nomes,
-  //   primeiraConexão,
-  //   ultimaConexão,
-  //   campanha
-  // }
-  dbconnect.collection('l_sesssoes').updateOne(
-    {
-      NUMEROS:data.numbers
-    },
-    {
-      STATUS:data?.status,
-      NUMEROS:data?.numbers,
-      NOMES:data?.names,
-      CRIACAO: new Date(),
-      CAMPANHA: data?.campaing,
-    },
-    {
-      upsert: true,
-    },
-    function (err) {
-      if (err) throw err;
-      res.status(500).send('error',err);
-    });
-  return res.status(203).send('sucesso na criação da campanha');
+  const instance = await WhatsAppInstance[req.query.key];
+  console.log(instance);
+  res.send('ok').status(200);
 };

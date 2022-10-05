@@ -10,5 +10,10 @@ router.route('/numeros').post(controller.numeros);
 router.route('/disparo').post(controller.disparo);
 router.route('/states').get(controller.states);
 router.route('/cids').post(controller.cidades);
+router.route('/campanha').post(controller.campaings.create);
+router.route('/campanha/update').post(controller.campaings.update);
+router.route('/campanha/list').get(controller.campaings.get);
+router.route('/testes').get(controller.test);
+
 
 module.exports = router;
