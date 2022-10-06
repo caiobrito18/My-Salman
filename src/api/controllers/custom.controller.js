@@ -1,6 +1,6 @@
 const db = require('../helper/mongoConn');
 const { WhatsAppInstance } = require('../class/instance');
-
+const crypto = require('crypto');
 exports.status = async (req, res) => {
   const sessions = req.body.sessions;
   let sessionsInfo = new Array();
@@ -197,13 +197,18 @@ exports.campaings = {
       //   ultimaConexão,
       //   campanha
       // }
+      const hash = crypto.randomBytes(8, function(err, buffer) {
+        console.log(err);
+        var hash = buffer.toString();
+        return hash;
+      });
+      console.log(data?.campaign.length,hash);
       dbconnect.collection('l_sessoes').insertOne(
         {
           STATUS:data?.status,
-          NUMEROS:data?.numbers,
-          NOMES:data?.names,
+          SESSOES:data?.sessions,
           CreatedAt: new Date(),
-          CAMPANHA: data?.campaign,
+          CAMPANHA: data?.campaign.length !== 0 ? data?.campaign : hash,
         },
         function (err) {
           if(err) res.status(500).send(`error ${err}`);
