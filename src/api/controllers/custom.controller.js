@@ -197,22 +197,17 @@ exports.campaings = {
       //   ultimaConexão,
       //   campanha
       // }
-      const hash = crypto.randomBytes(8, function(err, buffer) {
-        console.log(err);
-        var hash = buffer.toString();
-        return hash;
-      });
-      console.log(data?.campaign.length,hash);
-      dbconnect.collection('l_sessoes').insertOne(
+      const hash = crypto.randomBytes(8).toString('hex').replace(/.{4}(?!$)/g, '$&-');
+      console.log(hash);
+      await dbconnect.collection('l_sessoes').insertOne(
         {
           STATUS:data?.status,
           SESSOES:data?.sessions,
           CreatedAt: new Date(),
           CAMPANHA: data?.campaign.length !== 0 ? data?.campaign : hash,
-        },
-        function (err) {
-          if(err) res.status(500).send(`error ${err}`);
-        });
+        }).catch(function (err) {
+        if(err) res.status(500).send(`error ${err}`);
+      });
       return res.status(201).send('sucesso na criação da campanha');
     }),
   update:(
@@ -223,8 +218,11 @@ exports.campaings = {
         UpdatedAt:new Date(),
       };
       if(data?.status) updates['STATUS'] = data.status;
-      if(data?.status) updates['NUMEROS'] = data.numbers;
-      if(data?.status) updates['NOMES'] = data.names;
+      if(data?.sessions) updates['SESSOES'] = data.sessions;
+      
+      // if(data?.status) updates['NUMEROS'] = data.numbers;
+      // if(data?.status) updates['NOMES'] = data.names;
+
 
       console.log(updates);
       dbconnect.collection('l_sessoes').updateOne(
@@ -246,7 +244,7 @@ exports.campaings = {
         .toArray(
           function (err, result) {
             if (err) {
-              res.status(500).send(`Error fetching listings! ${err}`);
+              res.status(500).send(`Error getting Campaigns! ${err}`);
             } else {
               res.json(result);
             }
