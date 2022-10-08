@@ -1,6 +1,7 @@
 const db = require('../helper/mongoConn');
 const { WhatsAppInstance } = require('../class/instance');
 const crypto = require('crypto');
+const wss = require('../../config/websocket');
 exports.status = async (req, res) => {
   const sessions = req.body.sessions;
   let sessionsInfo = new Array();
@@ -32,7 +33,7 @@ exports.disparo = async (req, res) => {
   const saudacoes = dados.greets;
   const despedidas = dados.goodbyes;
   const sessoes = dados.sessions;
-
+  console.log(req.data)
   const dbconection = db.getDb();
   const data = numeros.map(async (numero) => {
     var rand1 = Math.floor(Math.random() * despedidas.length);
@@ -258,5 +259,6 @@ exports.test = async(req,res)=>{
   const data = req.body;
   const instance = await WhatsAppInstance[req.query.key];
   console.log(instance);
+  wss.emit('test');
   res.send('ok').status(200);
 };

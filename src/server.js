@@ -5,6 +5,7 @@ dotenv.config();
 
 const app = require('./config/express');
 const config = require('./config/config');
+const WSserver = require('./config/websocket');
 
 let server;
 
@@ -17,6 +18,9 @@ if (config.mongoose.enabled) {
 server = app.listen(config.port, () => {
   logger.info(`Listening to port ${config.port}`);
 });
+WSserver.listen(8999,()=>{
+  logger.info(`listening WSS on port 8999`)
+})
 const exitHandler = () => {
   if (server) {
     server.close(() => {
