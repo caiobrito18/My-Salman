@@ -1,7 +1,9 @@
 const db = require('../helper/mongoConn');
 const { WhatsAppInstance } = require('../class/instance');
 const crypto = require('crypto');
+const logger = require('pino')();
 const wss = require('../../config/websocket');
+const sleep = require('../helper/sleep');
 exports.status = async (req, res) => {
   const sessions = req.body.sessions;
   let sessionsInfo = new Array();
@@ -33,26 +35,18 @@ exports.disparo = async (req, res) => {
   const saudacoes = dados.greets;
   const despedidas = dados.goodbyes;
   const sessoes = dados.sessions;
-  console.log(req.data)
   const dbconection = db.getDb();
-  const data = numeros.map(async (numero) => {
+  const data = [];
+  for (const numero of numeros){
     var rand1 = Math.floor(Math.random() * despedidas.length);
     var rand2 = Math.floor(Math.random() * saudacoes.length);
     var rand3 = Math.floor(Math.random() * sessoes.length);
-    var time = Math.floor(Math.random() * (maxWait - minWait)) + minWait;
+    var time = () => Math.floor(Math.random() * (maxWait - minWait + 1))+minWait;
     let randGoodbye = despedidas[rand1];
     let randGreet = saudacoes[rand2];
     let mensagem = [randGreet, corpo, randGoodbye].join('\n');
     let chave = sessoes[rand3];
-
-    await new Promise((r) => {
-      setTimeout(r, time * 1000);
-    });
-    await WhatsAppInstances[chave].sendTextMessage(numero, mensagem);
-    return numero;
-  });
-  const update = numeros.map(async (numero) => {
-    return dbconection.collection('base_vivo').updateOne(
+    dbconection.collection('base_vivo').updateOne(
       {
         TELEFONE: { $in: [numero.slice(-7)] },
       },
@@ -63,13 +57,30 @@ exports.disparo = async (req, res) => {
         upsert: true,
       },
       function (err) {
-        if (err) throw err;
+        if (err) logger.error(err);
         console.log('1 document updated');
       }
     );
-  });
-  console.log(update);
-  return res.status(201).json({ error: false, data: data });
+    logger.info({rand1,
+      rand2,
+      rand3,
+      time,
+      randGoodbye,
+      randGreet,
+      mensagem,
+      chave});
+    data.push({rand1,
+      rand2,
+      rand3,
+      time,
+      randGoodbye,
+      randGreet,
+      mensagem,
+      chave});
+    await sleep(time()*1000);
+    await WhatsAppInstances[chave].sendTextMessage(numero, mensagem);
+  };
+  return res.status(201).json({ error: false, data });
 };
 
 exports.numeros = async (req, res) => {

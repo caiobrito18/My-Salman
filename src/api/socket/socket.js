@@ -8,12 +8,9 @@ const disparoSocket = (ws) => {
     //log the received message and send it back to the client
     logger.info('received: %s', message);
     ws.send(`Hello, you sent -> ${message}`);
-  });
-  ws.on('getImage', (image) => {
-
-    //log the received message and send it back to the client
-    logger.info('received: %s', image);
-    ws.send(`Hello, you sent -> ${image}`);
+    ws.emit('test', ['number are shown'], function(data){
+      console.log(data);
+    });
   });
 
   //send immediatly a feedback to the incoming connection    
