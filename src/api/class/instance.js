@@ -234,7 +234,7 @@ class WhatsAppInstance {
     await this.instance.sock?.presenceSubscribe(to);
     await delay(500);
     await this.instance.sock?.sendPresenceUpdate('composing', to);
-    await delay(1000);
+    await delay((Math.floor(Math.random() * 4)+1)*1000);
     await this.instance.sock?.sendPresenceUpdate('paused', to);
     const data = await this.instance.sock?.sendMessage(this.getWhatsAppId(to), {
       text: message,
