@@ -1,5 +1,6 @@
 const { WhatsAppInstance } = require('../class/instance');
 const fs = require('fs');
+const logger = require('pino')();
 const path = require('path');
 const config = require('../../config/config');
 const db = require('../helper/mongoConn');
@@ -124,10 +125,10 @@ exports.delete = async (req, res) => {
     await WhatsAppInstances[req.query.key].instance?.sock?.logout();
     delete WhatsAppInstances[req.query.key];
   } catch (error) {
-    if(error === 'phone isn\'t connected' ){
-      fs.rm(path.join(__dirname, '../sessiondata',`${req.query.key}.json`));
-      delete WhatsAppInstances[req.query.key];
-      errormsg = error;}
+    fs.rm(path.join(__dirname, '../sessiondata',`${req.query.key}.json`));
+    delete WhatsAppInstances[req.query.key];
+    logger.error(error);
+    errormsg = error;
   }
   return res.json({
     error: false,

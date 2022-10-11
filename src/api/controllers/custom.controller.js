@@ -46,12 +46,14 @@ exports.disparo = async (req, res) => {
     let randGreet = saudacoes[rand2];
     let mensagem = [randGreet, corpo, randGoodbye].join('\n');
     let chave = sessoes[rand3];
-    dbconection.collection('base_vivo').updateOne(
+    dbconection.collection('disparo_log').updateOne(
       {
-        TELEFONE: { $in: [numero.slice(-7)] },
+        TELEFONE: { $in: [numero] },
       },
       {
-        $inc: { ENVIADO: 1 },
+        $inc: { ENVIADO: 1},
+        $set: { ULTIMO_DISPARO: new Date().toLocaleString('pt-BR'), 
+          SESSAO:chave}
       },
       {
         upsert: true,
@@ -78,7 +80,7 @@ exports.disparo = async (req, res) => {
       mensagem,
       chave});
     await sleep(time()*1000);
-    await WhatsAppInstances[chave].sendTextMessage(numero, mensagem);
+    // await WhatsAppInstances[chave].sendTextMessage(numero, mensagem);
   };
   return res.status(201).json({ error: false, data });
 };
@@ -90,8 +92,8 @@ exports.numeros = async (req, res) => {
   console.log(req.body);
 
   let query = {
-    // WHATSAPP: 'S',
-    // BLACK_LIST:null,
+    WHATSAPP: {$regex: /^S/},
+    BLACK_LIST:null,
     // ENVIADO: { $not: /[1-9]/ }
   };
   
