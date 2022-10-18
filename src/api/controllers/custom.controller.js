@@ -275,3 +275,19 @@ exports.test = async(req,res)=>{
   wss.emit('test');
   res.send('ok').status(200);
 };
+
+exports.usersSU = async(req, res)=>{
+  const dbconnect = db.getDb();
+  const user = req.body;
+  if(!user.username || user.username === '' || !user.password || user.password === '' ) return res.send('ERRO, FALTANDO USUÁRIO OU SENHA').status(400);
+  await dbconnect.collection('usuarios_disparo').find({USERNAME: user.username }).toArray((err, res)=>{
+    if(err) res.send('erro :', err).status(500);
+    if(res !== {}) res.send('Usuário já existente').status(409);
+    return;
+  });
+  await dbconnect.collection('usuarios_disparo').insertOne(
+    {
+      username: user.username,
+      password: user.password
+    });
+};
