@@ -7,6 +7,7 @@ const {
   DisconnectReason,
   delay,
 } = require('@adiwajshing/baileys');
+const FormData = require('form-data');
 const { unlinkSync, readFileSync } = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
@@ -152,15 +153,37 @@ class WhatsAppInstance {
     });
 
     // on new mssage
-    sock?.ev.on('messages.upsert', (m) => {
+    sock?.ev.on('messages.upsert', async(m) => {
       if (m.type == 'prepend') this.instance.messages.unshift(...m.messages);
       if (m.type != 'notify') return;
 
       this.instance.messages.unshift(...m.messages);
-
-      m.messages.map(async (msg) => {
+      
+      await m.messages.map(async (msg) => {
         if (!msg.message) return;
-        if (msg.key.fromMe) return;
+        if (msg.key.fromMe){ 
+          let data = new FormData();
+          data.append('content', m.messages[0].message.conversation);
+          data.append('message_type', 'incoming');
+          data.append('content_type', 'text');
+          data.append('private', 'false');
+          let configPost = Object.assign(
+            {},
+            {
+              baseURL: 'http://164.68.108.97:8080',
+              headers: {
+                'Content-Type': 'application/json;charset=utf-8',
+                api_access_token: '6NQJGgvDmvc5JBA3denJLmow',
+              }
+            }
+          );
+          configPost.headers = { ...configPost.headers, ...data.getHeaders() };
+          
+          axios.post('api/v1/accounts/1/conversations/1/messages',
+            data,
+            configPost
+          );
+          return; };
 
         const messageType = Object.keys(msg.message)[0];
         if (
@@ -203,8 +226,8 @@ class WhatsAppInstance {
             break;
           }
         }
-
-        this.SendWebhook(webhookData);
+        
+        
       });
     });
   }

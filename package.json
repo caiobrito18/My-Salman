@@ -33,6 +33,7 @@
   "license": "MIT",
   "dependencies": {
     "@adiwajshing/baileys": "^4.4.0",
+    "@chatwoot/node": "git+https://github.com/chatwoot/node.git#main",
     "axios": "^0.27.2",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",

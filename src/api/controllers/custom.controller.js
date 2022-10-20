@@ -269,11 +269,8 @@ exports.campaings = {
 };
 
 exports.test = async(req,res)=>{
-  const data = req.body;
-  const instance = await WhatsAppInstance[req.query.key];
-  console.log(instance);
-  wss.emit('test');
-  res.send('ok').status(200);
+  logger.info(req.body);
+  res.status(200).send();
 };
 
 exports.usersSU = async(req, res)=>{
