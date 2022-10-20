@@ -269,7 +269,7 @@ exports.campaings = {
 };
 
 exports.test = async(req,res)=>{
-  logger.info(req.body);
+  console.log(req.body);
   res.status(200).send();
 };
 
