@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const logger = require('pino')();
 const wss = require('../../config/websocket');
 const sleep = require('../helper/sleep');
+const { default: pino } = require('pino');
 exports.status = async (req, res) => {
   const sessions = req.body.sessions;
   let sessionsInfo = new Array();
@@ -268,8 +269,10 @@ exports.campaings = {
   )
 };
 
-exports.test = async(req,res)=>{
-  console.log(req.body);
+exports.chatwoot = async(req,res)=>{
+  const { session } = req.params;
+  const client = WhatsAppInstances[session];
+  pino().info(req.body);
   res.status(200).send();
 };
 

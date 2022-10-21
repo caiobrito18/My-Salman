@@ -164,16 +164,16 @@ class WhatsAppInstance {
         if (msg.key.fromMe){ 
           let data = new FormData();
           data.append('content', m.messages[0].message.conversation);
-          data.append('message_type', 'incoming');
+          data.append('message_type', 'outgoing');
           data.append('content_type', 'text');
           data.append('private', 'false');
           let configPost = Object.assign(
             {},
             {
-              baseURL: 'http://164.68.108.97:8080',
+              baseURL: process.env.CHATWOOT_URL,
               headers: {
                 'Content-Type': 'application/json;charset=utf-8',
-                api_access_token: '6NQJGgvDmvc5JBA3denJLmow',
+                api_access_token: process.env.CHATWOOT_TOKEN,
               }
             }
           );
