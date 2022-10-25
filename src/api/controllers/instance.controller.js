@@ -6,10 +6,12 @@ const config = require('../../config/config');
 const db = require('../helper/mongoConn');
 
 exports.init = async (req, res) => {
-  const key = req.query.key;
+  const { key, baseURL, token, inbox_id, account_id, chatwoot_token } = req.query;
+  const chatwoot_config = { baseURL, token, inbox_id, account_id, chatwoot_token };
+  logger.info(chatwoot_config);
   const webhook = !req.query.webhook ? false : req.query.webhook;
   const webhookUrl = !req.query.webhookUrl ? null : req.query.webhookUrl;
-  const instance = new WhatsAppInstance(key, webhook, webhookUrl);
+  const instance = new WhatsAppInstance(key, webhook, webhookUrl, chatwoot_config);
   const data = await instance.init();
   WhatsAppInstances[data.key] = instance;
   res.json({

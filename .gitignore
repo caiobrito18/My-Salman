@@ -5,7 +5,8 @@ yarn.lock
 
 # APPLICATION
 .env
-sessiondata
+sessiondata/*.json
+chatwootdata/*.json
 
 # IDEs
 .vscode/settings.json

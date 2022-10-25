@@ -1,14 +1,17 @@
 /* eslint-disable no-unsafe-optional-chaining */
 const QRCode = require('qrcode');
 const pino = require('pino');
+const toStream  = require('buffer-to-stream');
+const mime = require('mime-types');
 const {
   default: makeWASocket,
   useSingleFileAuthState,
   DisconnectReason,
   delay,
+  useMultiFileAuthState,
 } = require('@adiwajshing/baileys');
 const FormData = require('form-data');
-const { unlinkSync, readFileSync } = require('fs');
+const { unlinkSync, readFileSync, stat, writeFile, readFile, writeFileSync } = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const processButton = require('../helper/processbtn');
@@ -36,18 +39,49 @@ class WhatsAppInstance {
     messages: [],
   };
 
+  chatwoot_inbox_id;
+  chatwoot_account_id;
+  mobile_number = '';
+  chatwoot_sender = {
+    pushname: '',
+    id: ''
+  };
+  chatwoot_api = axios.create({
+    baseURL: '',
+    headers: {},
+  });
+
   axiosInstance = axios.create({
     baseURL: config.webhookUrl,
   });
 
-  constructor(key, allowWebhook = true, webhook = null) {
+  constructor(key, allowWebhook = true, webhook = null, chatwoot_config) {
     this.key = key ? key : uuidv4();
+
+    if (chatwoot_config) {
+      stat(path.join(__dirname,`../chatwootdata/${this.key}.json`), (err, stats)=>{
+        if(err){ 
+          if(err.code == 'ENOENT'){
+            let chatwootData = JSON.stringify(chatwoot_config);
+            writeFile(path.join(__dirname,`../chatwootdata/${this.key}.json`), Buffer.from(chatwootData), (err) => {
+              pino().error(err);
+            });
+          }
+        }
+      });
+    };
     this.allowWebhook = allowWebhook;
     if (this.allowWebhook && webhook !== null) {
       this.axiosInstance = axios.create({
         baseURL: webhook,
       });
     }
+    readFile(path.join(__dirname,`../chatwootdata/${this.key}.json`), (err, data) => {
+      if (err) throw err;
+      let chatwootData = JSON.parse(data.toString());
+      this.setChatwoot(chatwootData);
+    });
+    console.log(this.chatwoot);
     this.authState = useSingleFileAuthState(
       path.join(__dirname, `../sessiondata/${this.key}.json`)
     );
@@ -63,11 +97,25 @@ class WhatsAppInstance {
   async init() {
     this.socketConfig.auth = this.authState.state;
     this.instance.sock = makeWASocket(this.socketConfig);
+    this.mobile_number = this.instance.sock?.user?.id.split(':')[0];
+    this.chatwoot_sender = {
+      pushname: this.instance.sock?.user?.name,
+      id: this.instance.sock?.user?.id.split(':')[0]
+    };
+
     this.setHandler();
     return this;
   }
   
-
+  setChatwoot(data){
+    this.chatwoot = data;
+    this.account_id = this.chatwoot.account_id;
+    this.inbox_id = this.chatwoot.inbox_id;
+    this.chatwoot_api = axios.create({
+      baseURL: this.chatwoot.baseURL,
+      headers: { 'Content-Type': 'application/json;charset=utf-8', api_access_token: this.chatwoot.chatwoot_token },
+    });
+  }
   setHandler() {
     const sock = this.instance.sock;
     // on credentials update save state
@@ -162,27 +210,7 @@ class WhatsAppInstance {
       await m.messages.map(async (msg) => {
         if (!msg.message) return;
         if (msg.key.fromMe){ 
-          let data = new FormData();
-          data.append('content', m.messages[0].message.conversation);
-          data.append('message_type', 'outgoing');
-          data.append('content_type', 'text');
-          data.append('private', 'false');
-          let configPost = Object.assign(
-            {},
-            {
-              baseURL: process.env.CHATWOOT_URL,
-              headers: {
-                'Content-Type': 'application/json;charset=utf-8',
-                api_access_token: process.env.CHATWOOT_TOKEN,
-              }
-            }
-          );
-          configPost.headers = { ...configPost.headers, ...data.getHeaders() };
-          
-          axios.post('api/v1/accounts/1/conversations/1/messages',
-            data,
-            configPost
-          );
+          this.chatwootSendMessage(this, msg);
           return; };
 
         const messageType = Object.keys(msg.message)[0];
@@ -197,8 +225,10 @@ class WhatsAppInstance {
           key: this.key,
           ...msg,
         };
+          
 
         if (messageType === 'conversation') {
+          this.chatwootSendMessage(this, msg);
           webhookData[(this.key, 'text')] = m;
         }
         if (config.webhookBase64) {
@@ -582,6 +612,144 @@ class WhatsAppInstance {
       throw new Error('unable to get invite code, check if the group exists');
     return await this.instance.sock?.groupInviteCode(id);
   }
+
+  //Chatwoot Integration
+
+  async chatwootSendMessage(client, message) {
+    // console.log(client);
+    // if (message.isGroupMsg || message.chatId.indexOf('@broadcast') > 0) return;
+    let contact = await this.chatwootCreateContact(message);
+    let conversation = await this.chatwootCreateConversation(contact, message.key.remoteJid.split('@')[0]);
+    const imageMessage = message.imageMessage;
+    try {
+      if (
+        imageMessage.type == 'image' ||
+        imageMessage.type == 'video' ||
+        imageMessage.type == 'in' ||
+        imageMessage.type == 'document' ||
+        imageMessage.type == 'ptt' ||
+        imageMessage.type == 'audio' ||
+        imageMessage.type == 'sticker'
+      ) {
+        if (imageMessage.mimetype == 'image/webp') imageMessage.mimetype = 'image/jpeg';
+        const extension = mime.extension(imageMessage.mimetype);
+        let filename = `${message.timestamp}.${extension}`;
+        let b64;
+
+        if (message.qrCode) b64 = message.qrCode;
+        else {
+          let buffer = await client.decryptFile(message);
+          b64 = await buffer.toString('base64');
+        }
+
+        let mediaData = Buffer.from(b64, 'base64');
+
+        let data = new FormData();
+        if (message.caption) {
+          data.append('content', message.caption);
+        }
+        data.append('attachments[]', toStream(mediaData), {
+          filename: filename,
+          contentType: message.mimetype,
+        });
+        !message.key.fromMe ? data.append('message_type', 'incoming') : data.append('message_type', 'outgoing');
+        data.append('private', 'false');
+
+        let configPost = Object.assign(
+          {},
+          {
+            baseURL: this.chatwoot.baseURL,
+            headers: {
+              'Content-Type': 'application/json;charset=utf-8',
+              api_access_token: this.chatwoot.chatwoot_token,
+            },
+          }
+        );
+        configPost.headers = { ...configPost.headers, ...data.getHeaders() };
+
+        var result = await axios.post(
+          `api/v1/accounts/${this.account_id}/conversations/${conversation.id}/messages`,
+          data,
+          configPost
+        );
+
+        return result;
+      } else {
+        let body = {
+          content: message.message.conversation,
+          message_type: 'incoming',
+        };
+        const { data } = await this.chatwoot_api.post(
+          `api/v1/accounts/${this.account_id}/conversations/${conversation.id}/messages`,
+          body
+        );
+        return data;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async findContact(query) {
+    try {
+      const { data } = await this.chatwoot_api.get(`api/v1/accounts/${this.account_id}/contacts/search/?q=${query}`);
+      return data;
+    } catch (e) {
+      console.log(e);
+      return null;
+    }
+  }
+
+  async chatwootCreateContact(message) {
+    let body = {
+      inbox_id: this.inbox_id,
+      name: message.pushName,
+      phone_number: `+${this.mobile_number}`,
+    };
+    var contact = await this.findContact(body.phone_number.replace('+', ''));
+    if (contact && contact.meta.count > 0) return contact.payload[0];
+
+    try {
+      const data = await this.chatwoot_api.post(`api/v1/accounts/${this.account_id}/contacts`, body);
+      return data.data.payload.contact;
+    } catch (e) {
+      pino().error(e);
+      return null;
+    }
+  }
+
+  async findConversation(contact) {
+    try {
+      const { data } = await this.chatwoot_api.get(
+        `api/v1/accounts/${this.account_id}/conversations?inbox_id=${this.inbox_id}&status=all`
+      );
+      return data.data.payload.find((e) => e.meta.sender.id == contact.id && e.status != 'resolved');
+    } catch (e) {
+      console.log(e);
+      return null;
+    }
+  }
+
+  async chatwootCreateConversation(contact, source_id) {
+    var conversation = await this.findConversation(contact);
+    if (conversation) return conversation;
+
+    let body = {
+      source_id: source_id,
+      inbox_id: this.inbox_id,
+      contact_id: contact.id,
+      status: 'open',
+    };
+
+    try {
+      const { data } = await this.chatwoot_api.post(`api/v1/accounts/${this.account_id}/conversations`, body);
+      return data;
+    } catch (e) {
+      console.log(e);
+      return null;
+    }
+  }
 }
+
 
 exports.WhatsAppInstance = WhatsAppInstance;
