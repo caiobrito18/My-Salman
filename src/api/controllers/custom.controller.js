@@ -5,6 +5,7 @@ const logger = require('pino')();
 const wss = require('../../config/websocket');
 const sleep = require('../helper/sleep');
 const { default: pino } = require('pino');
+const { contactToArray } = require('../helper/cttToArray');
 exports.status = async (req, res) => {
   const sessions = req.body.sessions;
   let sessionsInfo = new Array();
@@ -64,14 +65,6 @@ exports.disparo = async (req, res) => {
         console.log('1 document updated');
       }
     );
-    logger.info({rand1,
-      rand2,
-      rand3,
-      time,
-      randGoodbye,
-      randGreet,
-      mensagem,
-      chave});
     data.push({rand1,
       rand2,
       rand3,
@@ -272,8 +265,40 @@ exports.campaings = {
 exports.chatwoot = async(req,res)=>{
   const { session } = req.params;
   const client = WhatsAppInstances[session];
-  pino().info(req.body);
-  res.status(200).send();
+  // eslint-disable-next-line no-undefined
+  if (client === undefined) return;
+  try {
+    if (await client.isConnected()) {
+      const event = req.body.event;
+
+      if (event == 'conversation_status_changed' || event == 'conversation_resolved' || req.body.private) {
+        return res.status(200).json({ status: 'success', message: 'Success on receive chatwoot' });
+      }
+
+      const {
+        message_type,
+        phone = req.body.conversation.meta.sender.phone_number.replace('+', ''),
+        message = req.body.conversation.messages[0],
+      } = req.body;
+      logger.warn(client.instance.messages[0]?.message?.conversation);
+      if (event != 'message_created' && message_type != 'outgoing') return res.status(200);
+
+      if (message_type == 'outgoing') {
+        if (message.attachments) {
+          let base_url = `${client.config.chatWoot.baseURL}/${message.attachments[0].data_url.substring(
+            message.attachments[0].data_url.indexOf('/rails/') + 1
+          )}`;
+          await client.sendFile(`${phone}`, base_url, 'file', message.content);
+        } else if( message.content != client.instance.messages[0]?.message?.conversation ) {
+          await client.sendTextMessage(phone, message.content);
+        }
+      }
+      return res.status(200).json({ status: 'success', message: 'Success on  receive chatwoot' });
+    }
+  } catch (e) {
+    logger.error(e);
+    return res.status(400).json({ status: 'error', message: 'Error on  receive chatwoot' });
+  }
 };
 
 exports.usersSU = async(req, res)=>{

@@ -2,11 +2,11 @@
 node_modules
 package-lock.json
 yarn.lock
+.env
+src/api/sessiondata/*.json
+src/api/chatwootdata/*.json
 
 # APPLICATION
-.env
-sessiondata
-chatwootdata
 
 # IDEs
 .vscode/settings.json

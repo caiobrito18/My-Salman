@@ -1,17 +1,13 @@
 /* eslint-disable no-unsafe-optional-chaining */
 const QRCode = require('qrcode');
 const pino = require('pino');
-const toStream  = require('buffer-to-stream');
-const mime = require('mime-types');
 const {
   default: makeWASocket,
   useSingleFileAuthState,
   DisconnectReason,
   delay,
-  useMultiFileAuthState,
 } = require('@adiwajshing/baileys');
-const FormData = require('form-data');
-const { unlinkSync, readFileSync, stat, writeFile, readFile, writeFileSync } = require('fs');
+const { unlinkSync, readFileSync, stat, writeFile } = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const processButton = require('../helper/processbtn');
@@ -26,7 +22,7 @@ class WhatsAppInstance {
     printQRInTerminal: false,
     browser: ['FastBot N8N MD', '', '3.0'],
     logger: pino({
-      level: 'debug',
+      level: 'warn',
     }),
   };
   key = '';
@@ -76,12 +72,6 @@ class WhatsAppInstance {
         baseURL: webhook,
       });
     }
-    readFile(path.join(__dirname,`../chatwootdata/${this.key}.json`), (err, data) => {
-      if (err) throw err;
-      let chatwootData = JSON.parse(data.toString());
-      this.setChatwoot(chatwootData);
-    });
-    console.log(this.chatwoot);
     this.authState = useSingleFileAuthState(
       path.join(__dirname, `../sessiondata/${this.key}.json`)
     );
@@ -93,7 +83,7 @@ class WhatsAppInstance {
       return error;
     });
   }
-
+  
   async init() {
     this.socketConfig.auth = this.authState.state;
     this.instance.sock = makeWASocket(this.socketConfig);
@@ -102,13 +92,14 @@ class WhatsAppInstance {
       pushname: this.instance.sock?.user?.name,
       id: this.instance.sock?.user?.id.split(':')[0]
     };
-
+    this.setChatwoot();
     this.setHandler();
     return this;
   }
   
-  setChatwoot(data){
-    this.chatwoot = data;
+  async setChatwoot() {
+    let chatwootData = readFileSync(path.join(__dirname,`../chatwootdata/${this.key}.json`));
+    this.chatwoot = JSON.parse(chatwootData.toString());
     this.account_id = this.chatwoot.account_id;
     this.inbox_id = this.chatwoot.inbox_id;
     this.chatwoot_api = axios.create({
@@ -116,6 +107,7 @@ class WhatsAppInstance {
       headers: { 'Content-Type': 'application/json;charset=utf-8', api_access_token: this.chatwoot.chatwoot_token },
     });
   }
+
   setHandler() {
     const sock = this.instance.sock;
     // on credentials update save state
@@ -153,7 +145,7 @@ class WhatsAppInstance {
         });
       }
     });
-
+    
     // on receive all chats
     sock?.ev.on('chats.set', async ({ chats }) => {
       const recivedChats = chats.map((chat) => {
@@ -204,13 +196,12 @@ class WhatsAppInstance {
     sock?.ev.on('messages.upsert', async(m) => {
       if (m.type == 'prepend') this.instance.messages.unshift(...m.messages);
       if (m.type != 'notify') return;
-
       this.instance.messages.unshift(...m.messages);
       
       await m.messages.map(async (msg) => {
         if (!msg.message) return;
         if (msg.key.fromMe){ 
-          this.chatwootSendMessage(this, msg);
+          await this.chatwootSendMessage(this, msg, true);
           return; };
 
         const messageType = Object.keys(msg.message)[0];
@@ -261,7 +252,6 @@ class WhatsAppInstance {
       });
     });
   }
-
   async getInstanceDetail(key) {
     return {
       instance_key: key,
@@ -615,77 +605,76 @@ class WhatsAppInstance {
 
   //Chatwoot Integration
 
-  async chatwootSendMessage(client, message) {
-    // console.log(client);
-    // if (message.isGroupMsg || message.chatId.indexOf('@broadcast') > 0) return;
-    let contact = await this.chatwootCreateContact(message);
+  async chatwootSendMessage(client, message, fromMe) {
+    let contact = await this.chatwootCreateContact(message, fromMe);
     let conversation = await this.chatwootCreateConversation(contact, message.key.remoteJid.split('@')[0]);
     const imageMessage = message.imageMessage;
     try {
-      if (
-        imageMessage.type == 'image' ||
-        imageMessage.type == 'video' ||
-        imageMessage.type == 'in' ||
-        imageMessage.type == 'document' ||
-        imageMessage.type == 'ptt' ||
-        imageMessage.type == 'audio' ||
-        imageMessage.type == 'sticker'
-      ) {
-        if (imageMessage.mimetype == 'image/webp') imageMessage.mimetype = 'image/jpeg';
-        const extension = mime.extension(imageMessage.mimetype);
-        let filename = `${message.timestamp}.${extension}`;
-        let b64;
+      // if (
+      //   imageMessage.type == 'image' ||
+      //   imageMessage.type == 'video' ||
+      //   imageMessage.type == 'in' ||
+      //   imageMessage.type == 'document' ||
+      //   imageMessage.type == 'ptt' ||
+      //   imageMessage.type == 'audio' ||
+      //   imageMessage.type == 'sticker'
+      // ) {
+      //   if (imageMessage.mimetype == 'image/webp') imageMessage.mimetype = 'image/jpeg';
+      //   const extension = mime.extension(imageMessage.mimetype);
+      //   let filename = `${message.timestamp}.${extension}`;
+      //   let b64;
 
-        if (message.qrCode) b64 = message.qrCode;
-        else {
-          let buffer = await client.decryptFile(message);
-          b64 = await buffer.toString('base64');
-        }
+      //   if (message.qrCode) b64 = message.qrCode;
+      //   else {
+      //     let buffer = await client.decryptFile(message);
+      //     b64 = await buffer.toString('base64');
+      //   }
 
-        let mediaData = Buffer.from(b64, 'base64');
+      //   let mediaData = Buffer.from(b64, 'base64');
 
-        let data = new FormData();
-        if (message.caption) {
-          data.append('content', message.caption);
-        }
-        data.append('attachments[]', toStream(mediaData), {
-          filename: filename,
-          contentType: message.mimetype,
-        });
-        !message.key.fromMe ? data.append('message_type', 'incoming') : data.append('message_type', 'outgoing');
-        data.append('private', 'false');
+      //   let data = new FormData();
+      //   if (message.caption) {
+      //     data.append('content', message.caption);
+      //   }
+      //   data.append('attachments[]', toStream(mediaData), {
+      //     filename: filename,
+      //     contentType: message.mimetype,
+      //   });
+      //   !message.key.fromMe ? data.append('message_type', 'incoming') : data.append('message_type', 'outgoing');
+      //   data.append('private', 'false');
 
-        let configPost = Object.assign(
-          {},
-          {
-            baseURL: this.chatwoot.baseURL,
-            headers: {
-              'Content-Type': 'application/json;charset=utf-8',
-              api_access_token: this.chatwoot.chatwoot_token,
-            },
-          }
-        );
-        configPost.headers = { ...configPost.headers, ...data.getHeaders() };
+      //   let configPost = Object.assign(
+      //     {},
+      //     {
+      //       baseURL: this.chatwoot.baseURL,
+      //       headers: {
+      //         'Content-Type': 'application/json;charset=utf-8',
+      //         api_access_token: this.chatwoot.chatwoot_token,
+      //       },
+      //     }
+      //   );
+      //   configPost.headers = { ...configPost.headers, ...data.getHeaders() };
 
-        var result = await axios.post(
-          `api/v1/accounts/${this.account_id}/conversations/${conversation.id}/messages`,
-          data,
-          configPost
-        );
+      //   var result = await axios.post(
+      //     `api/v1/accounts/${this.account_id}/conversations/${conversation.id}/messages`,
+      //     data,
+      //     configPost
+      //   );
 
-        return result;
-      } else {
-        let body = {
-          content: message.message.conversation,
-          message_type: 'incoming',
-        };
-        const { data } = await this.chatwoot_api.post(
-          `api/v1/accounts/${this.account_id}/conversations/${conversation.id}/messages`,
-          body
-        );
-        return data;
-      }
+      //   return result;
+      // } else {
+      let body = {
+        content: message.message.conversation,
+        message_type: message.key.fromMe ? 'outgoing' : 'incoming',
+      };
+      const { data } = await this.chatwoot_api.post(
+        `api/v1/accounts/${this.account_id}/conversations/${conversation.id}/messages`,
+        body
+      );
+      return data;
+      // }
     } catch (e) {
+      pino().error(e);
       return null;
     }
   }
@@ -695,16 +684,16 @@ class WhatsAppInstance {
       const { data } = await this.chatwoot_api.get(`api/v1/accounts/${this.account_id}/contacts/search/?q=${query}`);
       return data;
     } catch (e) {
-      console.log(e);
+      pino().error(e);
       return null;
     }
   }
 
-  async chatwootCreateContact(message) {
+  async chatwootCreateContact(message, fromMe) {
     let body = {
       inbox_id: this.inbox_id,
-      name: message.pushName,
-      phone_number: `+${this.mobile_number}`,
+      name: fromMe ? message.key.remoteJid.split('@')[0] : message.pushName,
+      phone_number: `+${message.key.remoteJid.split('@')[0]}`,
     };
     var contact = await this.findContact(body.phone_number.replace('+', ''));
     if (contact && contact.meta.count > 0) return contact.payload[0];
@@ -723,9 +712,9 @@ class WhatsAppInstance {
       const { data } = await this.chatwoot_api.get(
         `api/v1/accounts/${this.account_id}/conversations?inbox_id=${this.inbox_id}&status=all`
       );
-      return data.data.payload.find((e) => e.meta.sender.id == contact.id && e.status != 'resolved');
+      return data.data.payload.find((e) => e.meta.sender.id === contact.id && e.status != 'resolved');
     } catch (e) {
-      console.log(e);
+      pino().error(e);
       return null;
     }
   }
@@ -740,16 +729,18 @@ class WhatsAppInstance {
       contact_id: contact.id,
       status: 'open',
     };
-
     try {
       const { data } = await this.chatwoot_api.post(`api/v1/accounts/${this.account_id}/conversations`, body);
       return data;
     } catch (e) {
-      console.log(e);
+      pino().error(e);
       return null;
     }
   }
+  
+  async isConnected(){
+    return await this.instance.sock?.ws?.readyState === 1;
+  }
 }
-
 
 exports.WhatsAppInstance = WhatsAppInstance;
