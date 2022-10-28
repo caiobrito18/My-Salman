@@ -5,6 +5,8 @@ yarn.lock
 .env
 src/api/sessiondata/*.json
 src/api/chatwootdata/*.json
+src/api/files/*.*
+!src/api/files/.gitkeep
 
 # APPLICATION
 

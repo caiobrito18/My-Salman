@@ -1,11 +1,12 @@
 const db = require('../helper/mongoConn');
 const { WhatsAppInstance } = require('../class/instance');
 const crypto = require('crypto');
+const mime = require('mime');
 const logger = require('pino')();
-const wss = require('../../config/websocket');
 const sleep = require('../helper/sleep');
-const { default: pino } = require('pino');
-const { contactToArray } = require('../helper/cttToArray');
+const download = require('download');
+const path = require('path');
+const { readFileSync } = require('fs');
 exports.status = async (req, res) => {
   const sessions = req.body.sessions;
   let sessionsInfo = new Array();
@@ -280,15 +281,20 @@ exports.chatwoot = async(req,res)=>{
         phone = req.body.conversation.meta.sender.phone_number.replace('+', ''),
         message = req.body.conversation.messages[0],
       } = req.body;
-      logger.warn(client.instance.messages[0]?.message?.conversation);
       if (event != 'message_created' && message_type != 'outgoing') return res.status(200);
 
       if (message_type == 'outgoing') {
         if (message.attachments) {
-          let base_url = `${client.config.chatWoot.baseURL}/${message.attachments[0].data_url.substring(
+          logger.warn(message.attachments);
+          let base_url = `${client.chatwoot.baseURL}/${message.attachments[0].data_url.substring(
             message.attachments[0].data_url.indexOf('/rails/') + 1
           )}`;
-          await client.sendFile(`${phone}`, base_url, 'file', message.content);
+          const FileName = message.attachments[0].data_url.split('/').slice(-1);
+          await download(base_url, path.join(__dirname, '../files'));
+          const filePath = path.join(__dirname, `../files/${FileName}`);
+          const file = readFileSync(filePath);
+          const fmmt = mime.getType(filePath);
+          await client.sendMediaFile(phone, base_url, file, message.attachments[0].file_type,'', fmmt);
         } else if( message.content != client.instance.messages[0]?.message?.conversation ) {
           await client.sendTextMessage(phone, message.content);
         }

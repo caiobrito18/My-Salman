@@ -7,8 +7,11 @@ const {
   DisconnectReason,
   delay,
 } = require('@adiwajshing/baileys');
-const { unlinkSync, readFileSync, stat, writeFile } = require('fs');
+const { unlinkSync, readFileSync, stat, writeFile, readFile, access } = require('fs');
 const { v4: uuidv4 } = require('uuid');
+const toStream = require('buffer-to-stream');
+const {FormData} = require('form-data');
+const mime = require('mime-types');
 const path = require('path');
 const processButton = require('../helper/processbtn');
 const generateVC = require('../helper/genVc');
@@ -16,6 +19,7 @@ const generateVC = require('../helper/genVc');
 const axios = require('axios');
 const config = require('../../config/config');
 const downloadMessage = require('../helper/downloadMsg');
+const { constants } = require('buffer');
 
 class WhatsAppInstance {
   socketConfig = {
@@ -97,7 +101,7 @@ class WhatsAppInstance {
     return this;
   }
   
-  async setChatwoot() {
+  setChatwoot() {
     let chatwootData = readFileSync(path.join(__dirname,`../chatwootdata/${this.key}.json`));
     this.chatwoot = JSON.parse(chatwootData.toString());
     this.account_id = this.chatwoot.account_id;
@@ -220,7 +224,6 @@ class WhatsAppInstance {
 
         if (messageType === 'conversation') {
           this.chatwootSendMessage(this, msg);
-          webhookData[(this.key, 'text')] = m;
         }
         if (config.webhookBase64) {
           switch (messageType) {
@@ -610,69 +613,71 @@ class WhatsAppInstance {
     let conversation = await this.chatwootCreateConversation(contact, message.key.remoteJid.split('@')[0]);
     const imageMessage = message.imageMessage;
     try {
-      // if (
-      //   imageMessage.type == 'image' ||
-      //   imageMessage.type == 'video' ||
-      //   imageMessage.type == 'in' ||
-      //   imageMessage.type == 'document' ||
-      //   imageMessage.type == 'ptt' ||
-      //   imageMessage.type == 'audio' ||
-      //   imageMessage.type == 'sticker'
-      // ) {
-      //   if (imageMessage.mimetype == 'image/webp') imageMessage.mimetype = 'image/jpeg';
-      //   const extension = mime.extension(imageMessage.mimetype);
-      //   let filename = `${message.timestamp}.${extension}`;
-      //   let b64;
+      if( imageMessage ){
 
-      //   if (message.qrCode) b64 = message.qrCode;
-      //   else {
-      //     let buffer = await client.decryptFile(message);
-      //     b64 = await buffer.toString('base64');
-      //   }
+        if (
+          imageMessage.type == 'image' ||
+        imageMessage.type == 'video' ||
+        imageMessage.type == 'in' ||
+        imageMessage.type == 'document' ||
+        imageMessage.type == 'ptt' ||
+        imageMessage.type == 'audio' ||
+        imageMessage.type == 'sticker'
+        ) {
+          if (imageMessage.mimetype == 'image/webp') imageMessage.mimetype = 'image/jpeg';
+          const extension = mime.extension(imageMessage.mimetype);
+          let filename = `${message.timestamp}.${extension}`;
+          let b64;
 
-      //   let mediaData = Buffer.from(b64, 'base64');
+          if (message.qrCode) b64 = message.qrCode;
+          else {
+            let buffer = await client.decryptFile(message);
+            b64 = await buffer.toString('base64');
+          }
 
-      //   let data = new FormData();
-      //   if (message.caption) {
-      //     data.append('content', message.caption);
-      //   }
-      //   data.append('attachments[]', toStream(mediaData), {
-      //     filename: filename,
-      //     contentType: message.mimetype,
-      //   });
-      //   !message.key.fromMe ? data.append('message_type', 'incoming') : data.append('message_type', 'outgoing');
-      //   data.append('private', 'false');
+          let mediaData = Buffer.from(b64, 'base64');
 
-      //   let configPost = Object.assign(
-      //     {},
-      //     {
-      //       baseURL: this.chatwoot.baseURL,
-      //       headers: {
-      //         'Content-Type': 'application/json;charset=utf-8',
-      //         api_access_token: this.chatwoot.chatwoot_token,
-      //       },
-      //     }
-      //   );
-      //   configPost.headers = { ...configPost.headers, ...data.getHeaders() };
+          let data = new FormData();
+          if (message.caption) {
+            data.append('content', message.caption);
+          }
+          data.append('attachments[]', toStream(mediaData), {
+            filename: filename,
+            contentType: message.mimetype,
+          });
+          !message.key.fromMe ? data.append('message_type', 'incoming') : data.append('message_type', 'outgoing');
+          data.append('private', 'false');
 
-      //   var result = await axios.post(
-      //     `api/v1/accounts/${this.account_id}/conversations/${conversation.id}/messages`,
-      //     data,
-      //     configPost
-      //   );
+          let configPost = Object.assign(
+            {},
+            {
+              baseURL: this.chatwoot.baseURL,
+              headers: {
+                'Content-Type': 'application/json;charset=utf-8',
+                api_access_token: this.chatwoot.chatwoot_token,
+              },
+            }
+          );
+          configPost.headers = { ...configPost.headers, ...data.getHeaders() };
 
-      //   return result;
-      // } else {
-      let body = {
-        content: message.message.conversation,
-        message_type: message.key.fromMe ? 'outgoing' : 'incoming',
-      };
-      const { data } = await this.chatwoot_api.post(
-        `api/v1/accounts/${this.account_id}/conversations/${conversation.id}/messages`,
-        body
-      );
-      return data;
-      // }
+          var result = await axios.post(
+            `api/v1/accounts/${this.account_id}/conversations/${conversation.id}/messages`,
+            data,
+            configPost
+          );
+
+          return result;
+        }} else {
+        let body = {
+          content: message.message.conversation,
+          message_type: message.key.fromMe ? 'outgoing' : 'incoming',
+        };
+        const { data } = await this.chatwoot_api.post(
+          `api/v1/accounts/${this.account_id}/conversations/${conversation.id}/messages`,
+          body
+        );
+        return data;
+      }
     } catch (e) {
       pino().error(e);
       return null;
