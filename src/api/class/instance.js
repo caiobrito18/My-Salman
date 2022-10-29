@@ -11,7 +11,7 @@ const { unlinkSync, readFileSync, stat, writeFile} = require('fs');
 const { readFile } = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 const toStream = require('buffer-to-stream');
-const {FormData} = require('form-data');
+const FormData = require('form-data');
 const mime = require('mime-types');
 const path = require('path');
 const processButton = require('../helper/processbtn');
@@ -225,32 +225,35 @@ class WhatsAppInstance {
 
         if (messageType === 'conversation') {
           this.chatwootSendMessage(this, msg);
+        }else{
+          pino().warn(msg);
         }
-        if (config.webhookBase64) {
-          switch (messageType) {
-          case 'imageMessage':
-            webhookData['msgContent'] = await downloadMessage(
-              msg.message.imageMessage,
-              'image'
-            );
-            break;
-          case 'videoMessage':
-            webhookData['msgContent'] = await downloadMessage(
-              msg.message.videoMessage,
-              'video'
-            );
-            break;
-          case 'audioMessage':
-            webhookData['msgContent'] = await downloadMessage(
-              msg.message.audioMessage,
-              'audio'
-            );
-            break;
-          default:
-            webhookData['msgContent'] = '';
-            break;
-          }
-        }
+
+        // if (config.webhookBase64) {
+        //   switch (messageType) {
+        //   case 'imageMessage':
+        //     b64 = await downloadMessage(
+        //       msg.message.imageMessage,
+        //       'image'
+        //     );
+        //     break;
+        //   case 'videoMessage':
+        //     webhookData['msgContent'] = await downloadMessage(
+        //       msg.message.videoMessage,
+        //       'video'
+        //     );
+        //     break;
+        //   case 'audioMessage':
+        //     webhookData['msgContent'] = await downloadMessage(
+        //       msg.message.audioMessage,
+        //       'audio'
+        //     );
+        //     break;
+        //   default:
+        //     webhookData['msgContent'] = '';
+        //     break;
+        //   }
+        // }
         
         
       });
@@ -612,30 +615,53 @@ class WhatsAppInstance {
   async chatwootSendMessage(client, message, fromMe) {
     let contact = await this.chatwootCreateContact(message, fromMe);
     let conversation = await this.chatwootCreateConversation(contact, message.key.remoteJid.split('@')[0]);
-    const imageMessage = message.imageMessage;
+    const messageType = Object.keys(message.message)[0];
     try {
-      if( imageMessage ){
-
+      if( messageType ){
         if (
-          imageMessage.type == 'image' ||
-        imageMessage.type == 'video' ||
-        imageMessage.type == 'in' ||
-        imageMessage.type == 'document' ||
-        imageMessage.type == 'ptt' ||
-        imageMessage.type == 'audio' ||
-        imageMessage.type == 'sticker'
+          messageType == 'imageMessage' ||
+        messageType == 'videoMessage' ||
+        messageType == 'documentMessage' ||
+        messageType == 'audioMessage'
         ) {
-          if (imageMessage.mimetype == 'image/webp') imageMessage.mimetype = 'image/jpeg';
-          const extension = mime.extension(imageMessage.mimetype);
-          let filename = `${message.timestamp}.${extension}`;
+          const msg = message.message;
+          if (msg.mimetype == 'image/webp') msg.mimetype = 'image/jpeg';
+          let filename = msg.fileName;
           let b64;
 
           if (message.qrCode) b64 = message.qrCode;
           else {
-            let buffer = await client.decryptFile(message);
-            b64 = await buffer.toString('base64');
+            switch (messageType) {
+            case 'imageMessage':
+              b64 = await downloadMessage(
+                msg.imageMessage,
+                'image'
+              );
+              break;
+            case 'videoMessage':
+              b64 = await downloadMessage(
+                msg.videoMessage,
+                'video'
+              );
+              break;
+            case 'audioMessage':
+              b64 = await downloadMessage(
+                msg.audioMessage,
+                'audio'
+              );
+              break;
+            case 'documentMessage':
+              b64 = await downloadMessage(
+                msg.documentMessage,
+                'document'
+              );
+              break;
+            default:
+              b64 = '';
+              break;
+            }
           }
-
+          pino().info(b64);
           let mediaData = Buffer.from(b64, 'base64');
 
           let data = new FormData();
@@ -644,7 +670,7 @@ class WhatsAppInstance {
           }
           data.append('attachments[]', toStream(mediaData), {
             filename: filename,
-            contentType: message.mimetype,
+            contentType: msg.mimetype,
           });
           !message.key.fromMe ? data.append('message_type', 'incoming') : data.append('message_type', 'outgoing');
           data.append('private', 'false');
