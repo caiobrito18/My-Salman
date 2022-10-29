@@ -7,7 +7,8 @@ const {
   DisconnectReason,
   delay,
 } = require('@adiwajshing/baileys');
-const { unlinkSync, readFileSync, stat, writeFile, readFile, access } = require('fs');
+const { unlinkSync, readFileSync, stat, writeFile} = require('fs');
+const { readFile } = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 const toStream = require('buffer-to-stream');
 const {FormData} = require('form-data');
@@ -101,8 +102,8 @@ class WhatsAppInstance {
     return this;
   }
   
-  setChatwoot() {
-    let chatwootData = readFileSync(path.join(__dirname,`../chatwootdata/${this.key}.json`));
+  async setChatwoot() {
+    let chatwootData = await readFile(path.join(__dirname,`../chatwootdata/${this.key}.json`));
     this.chatwoot = JSON.parse(chatwootData.toString());
     this.account_id = this.chatwoot.account_id;
     this.inbox_id = this.chatwoot.inbox_id;
@@ -296,7 +297,7 @@ class WhatsAppInstance {
     await delay(1000);
     await this.instance.sock?.sendPresenceUpdate('paused', to);
     const data = await this.instance.sock?.sendMessage(this.getWhatsAppId(to), {
-      [type]: { url: path + file },
+      [type]: { url: path },
       mimetype: mimetype,
       caption: caption,
       ptt: type === 'audio' ? true : false,
@@ -327,7 +328,7 @@ class WhatsAppInstance {
     await this.instance.sock?.sendPresenceUpdate('paused', to);
     const data = await this.instance.sock?.sendMessage(this.getWhatsAppId(to), {
       mimetype: mimetype,
-      [type]: { url: path + file },
+      [type]: { url: path },
       caption: caption,
       fileName: filename ? filename : file,
     });

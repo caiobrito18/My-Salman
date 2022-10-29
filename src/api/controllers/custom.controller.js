@@ -7,6 +7,7 @@ const sleep = require('../helper/sleep');
 const download = require('download');
 const path = require('path');
 const { readFileSync } = require('fs');
+const { readFile } = require('fs').promises;
 exports.status = async (req, res) => {
   const sessions = req.body.sessions;
   let sessionsInfo = new Array();
@@ -282,19 +283,27 @@ exports.chatwoot = async(req,res)=>{
         message = req.body.conversation.messages[0],
       } = req.body;
       if (event != 'message_created' && message_type != 'outgoing') return res.status(200);
-
       if (message_type == 'outgoing') {
         if (message.attachments) {
-          logger.warn(message.attachments);
           let base_url = `${client.chatwoot.baseURL}/${message.attachments[0].data_url.substring(
             message.attachments[0].data_url.indexOf('/rails/') + 1
           )}`;
           const FileName = message.attachments[0].data_url.split('/').slice(-1);
           await download(base_url, path.join(__dirname, '../files'));
-          const filePath = path.join(__dirname, `../files/${FileName}`);
-          const file = readFileSync(filePath);
+          const filePath = `${__dirname}/../files/${FileName}`;
+          const file = await readFile(filePath);
           const fmmt = mime.getType(filePath);
-          await client.sendMediaFile(phone, base_url, file, message.attachments[0].file_type,'', fmmt);
+          const ftype = fmmt.split('/')[0];
+          sleep(5000);
+          if(ftype == 'image' ||
+          ftype == 'video' ||
+          ftype == 'audio'){
+            logger.info(ftype); 
+            await client.sendMediaFile(phone, filePath, file, ftype,'', fmmt);
+          } else{ 
+            logger.info(ftype + '135468'); 
+            await client.sendDocFile(phone, filePath, file, ftype,'', fmmt, FileName);
+          };
         } else if( message.content != client.instance.messages[0]?.message?.conversation ) {
           await client.sendTextMessage(phone, message.content);
         }
