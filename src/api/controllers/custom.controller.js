@@ -7,7 +7,8 @@ const sleep = require('../helper/sleep');
 const download = require('download');
 const path = require('path');
 const { readFileSync } = require('fs');
-const { readFile } = require('fs').promises;
+const normalize = require('../helper/normalize');
+const { readFile, writeFile } = require('fs').promises;
 exports.status = async (req, res) => {
   const sessions = req.body.sessions;
   let sessionsInfo = new Array();
@@ -288,8 +289,9 @@ exports.chatwoot = async(req,res)=>{
           let base_url = `${client.chatwoot.baseURL}/${message.attachments[0].data_url.substring(
             message.attachments[0].data_url.indexOf('/rails/') + 1
           )}`;
-          const FileName = message.attachments[0].data_url.split('/').slice(-1);
-          await download(base_url, path.join(__dirname, '../files'));
+          const FileName = normalize(message.attachments[0].data_url.split('/').slice(-1)[0]);
+          logger.info(FileName);
+          await writeFile(`${__dirname}/../files/${FileName}`,await download(base_url));
           const filePath = `${__dirname}/../files/${FileName}`;
           const file = await readFile(filePath);
           const fmmt = mime.getType(filePath);
@@ -298,11 +300,9 @@ exports.chatwoot = async(req,res)=>{
           if(ftype == 'image' ||
           ftype == 'video' ||
           ftype == 'audio'){
-            logger.info(ftype); 
-            await client.sendMediaFile(phone, filePath, file, ftype,'', fmmt);
+            await client.sendMediaFile(phone, filePath, file, ftype, '', fmmt);
           } else{ 
-            logger.info(ftype + '135468'); 
-            await client.sendDocFile(phone, filePath, file, ftype,'', fmmt, FileName);
+            await client.sendDocFile(phone, filePath, file, 'document', '', fmmt, FileName);
           };
         } else if( message.content != client.instance.messages[0]?.message?.conversation ) {
           await client.sendTextMessage(phone, message.content);
