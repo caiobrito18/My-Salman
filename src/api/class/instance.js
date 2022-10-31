@@ -7,8 +7,8 @@ const {
   DisconnectReason,
   delay,
 } = require('@adiwajshing/baileys');
-const { unlinkSync, readFileSync, stat } = require('fs');
-const { readFile, writeFile } = require('fs').promises;
+const { unlinkSync, readFileSync, stat, writeFile} = require('fs');
+const { readFile } = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 const toStream = require('buffer-to-stream');
 const FormData = require('form-data');
@@ -58,13 +58,25 @@ class WhatsAppInstance {
 
   constructor(key, allowWebhook = true, webhook = null, chatwoot_config) {
     this.key = key ? key : uuidv4();
+
+    if (chatwoot_config) {
+      stat(path.join(__dirname,`../chatwootdata/${this.key}.json`), (err, stats)=>{
+        if(err){ 
+          if(err.code == 'ENOENT'){
+            let chatwootData = JSON.stringify(chatwoot_config);
+            writeFile(path.join(__dirname,`../chatwootdata/${this.key}.json`), Buffer.from(chatwootData), (err) => {
+              pino().error(err);
+            });
+          }
+        }
+      });
+    };
     this.allowWebhook = allowWebhook;
     if (this.allowWebhook && webhook !== null) {
       this.axiosInstance = axios.create({
         baseURL: webhook,
       });
     }
-    if( chatwoot_config ) this.setChatwoot(chatwoot_config);
     this.authState = useSingleFileAuthState(
       path.join(__dirname, `../sessiondata/${this.key}.json`)
     );
@@ -85,23 +97,12 @@ class WhatsAppInstance {
       pushname: this.instance.sock?.user?.name,
       id: this.instance.sock?.user?.id.split(':')[0]
     };
+    this.setChatwoot();
     this.setHandler();
     return this;
   }
   
-  async setChatwoot(chatwoot_config) {
-    if (chatwoot_config) {
-      stat(path.join(__dirname,`../chatwootdata/${this.key}.json`), async(err, stats)=>{
-        if(err){ 
-          if(err.code == 'ENOENT'){
-            let chatwootData = JSON.stringify(chatwoot_config);
-            await writeFile(path.join(__dirname,`../chatwootdata/${this.key}.json`), Buffer.from(chatwootData), (err) => {
-              pino().error(err);
-            });
-          }
-        }
-      });
-    };
+  async setChatwoot() {
     let chatwootData = await readFile(path.join(__dirname,`../chatwootdata/${this.key}.json`));
     this.chatwoot = JSON.parse(chatwootData.toString());
     this.account_id = this.chatwoot.account_id;
