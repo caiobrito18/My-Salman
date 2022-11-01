@@ -7,8 +7,8 @@ const {
   DisconnectReason,
   delay,
 } = require('@adiwajshing/baileys');
-const { unlinkSync, readFileSync, stat, writeFile} = require('fs');
-const { readFile } = require('fs').promises;
+const { unlinkSync, readFileSync, stat} = require('fs');
+const { readFile, writeFile } = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 const toStream = require('buffer-to-stream');
 const FormData = require('form-data');
@@ -21,6 +21,7 @@ const axios = require('axios');
 const config = require('../../config/config');
 const downloadMessage = require('../helper/downloadMsg');
 const { constants } = require('buffer');
+const sleep = require('../helper/sleep');
 
 class WhatsAppInstance {
   socketConfig = {
@@ -56,21 +57,8 @@ class WhatsAppInstance {
     baseURL: config.webhookUrl,
   });
 
-  constructor(key, allowWebhook = true, webhook = null, chatwoot_config) {
+  constructor(key, allowWebhook = true, webhook = null) {
     this.key = key ? key : uuidv4();
-
-    if (chatwoot_config) {
-      stat(path.join(__dirname,`../chatwootdata/${this.key}.json`), (err, stats)=>{
-        if(err){ 
-          if(err.code == 'ENOENT'){
-            let chatwootData = JSON.stringify(chatwoot_config);
-            writeFile(path.join(__dirname,`../chatwootdata/${this.key}.json`), Buffer.from(chatwootData), (err) => {
-              pino().error(err);
-            });
-          }
-        }
-      });
-    };
     this.allowWebhook = allowWebhook;
     if (this.allowWebhook && webhook !== null) {
       this.axiosInstance = axios.create({
@@ -89,7 +77,7 @@ class WhatsAppInstance {
     });
   }
   
-  async init() {
+  async init(chatwoot_config) {
     this.socketConfig.auth = this.authState.state;
     this.instance.sock = makeWASocket(this.socketConfig);
     this.mobile_number = this.instance.sock?.user?.id.split(':')[0];
@@ -97,20 +85,49 @@ class WhatsAppInstance {
       pushname: this.instance.sock?.user?.name,
       id: this.instance.sock?.user?.id.split(':')[0]
     };
-    this.setChatwoot();
+    if(chatwoot_config) this._setChatwoot().create(chatwoot_config,this.key);
+    const _chc = await this._setChatwoot().set(this.key);
+    this.chatwoot_api = _chc.chatwoot_api;
+    this.chatwoot_account_id = _chc.account_id;
+    this.chatwoot_inbox_id = _chc.inbox_id;
+    this.chatwoot = _chc.chatwoot;
     this.setHandler();
     return this;
   }
   
-  async setChatwoot() {
-    let chatwootData = await readFile(path.join(__dirname,`../chatwootdata/${this.key}.json`));
-    this.chatwoot = JSON.parse(chatwootData.toString());
-    this.account_id = this.chatwoot.account_id;
-    this.inbox_id = this.chatwoot.inbox_id;
-    this.chatwoot_api = axios.create({
-      baseURL: this.chatwoot.baseURL,
-      headers: { 'Content-Type': 'application/json;charset=utf-8', api_access_token: this.chatwoot.chatwoot_token },
-    });
+  _setChatwoot() {
+    function create(chatwoot_config, key){
+      stat(path.join(__dirname,`../chatwootdata/${key}.json`), async (err, stats)=>{
+        if(err){ 
+          if(err.code == 'ENOENT'){
+            let chatwootData = JSON.stringify(chatwoot_config);
+            await writeFile(path.join(__dirname,`../chatwootdata/${key}.json`), Buffer.from(chatwootData), (err) => {
+              pino().error(err);
+            });
+          }
+        }
+      });
+    }
+    async function set(key){
+      let chatwootData = await readFile(path.join(__dirname,`../chatwootdata/${key}.json`));
+      const chatwoot = JSON.parse(chatwootData.toString());
+      const account_id = chatwoot.account_id;
+      const inbox_id = chatwoot.inbox_id;
+      const chatwoot_api = axios.create({
+        baseURL: chatwoot.baseURL,
+        headers: { 'Content-Type': 'application/json;charset=utf-8', api_access_token: chatwoot.chatwoot_token },
+      });
+      return{
+        chatwoot,
+        account_id,
+        inbox_id,
+        chatwoot_api
+      };
+    }
+    return {
+      set,
+      create
+    };
   }
 
   setHandler() {

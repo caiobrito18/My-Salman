@@ -8,11 +8,10 @@ const db = require('../helper/mongoConn');
 exports.init = async (req, res) => {
   const { key, baseURL, token, inbox_id, account_id, chatwoot_token } = req.query;
   const chatwoot_config = { baseURL, token, inbox_id, account_id, chatwoot_token };
-  logger.info(chatwoot_config);
   const webhook = !req.query.webhook ? false : req.query.webhook;
   const webhookUrl = !req.query.webhookUrl ? null : req.query.webhookUrl;
-  const instance = new WhatsAppInstance(key, webhook, webhookUrl, chatwoot_config);
-  const data = await instance.init();
+  const instance = new WhatsAppInstance(key, webhook, webhookUrl);
+  const data = await instance.init(chatwoot_config).catch(e => logger.error(e));
   WhatsAppInstances[data.key] = instance;
   res.json({
     error: false,
@@ -77,6 +76,7 @@ exports.restore = async (req, res, next) => {
     });
     restoredSessions.map(async(key) => {
       const instance = new WhatsAppInstance(key);
+      logger.info(key);
       if(WhatsAppInstances[key] === undefined){
         await instance.init().catch(error => console.log(error));
         WhatsAppInstances[key] = instance;
