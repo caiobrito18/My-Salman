@@ -270,6 +270,7 @@ exports.chatwoot = async(req,res)=>{
   const client = WhatsAppInstances[session];
   // eslint-disable-next-line no-undefined
   if (client === undefined) return;
+  logger().info(req.body);
   try {
     if (await client.isConnected()) {
       const event = req.body.event;

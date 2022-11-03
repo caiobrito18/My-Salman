@@ -20,8 +20,9 @@ const generateVC = require('../helper/genVc');
 const axios = require('axios');
 const config = require('../../config/config');
 const downloadMessage = require('../helper/downloadMsg');
-const { constants } = require('buffer');
+const { constants, Blob } = require('buffer');
 const sleep = require('../helper/sleep');
+const decryptFile = require('../helper/dcrypt');
 
 class WhatsAppInstance {
   socketConfig = {
@@ -86,11 +87,16 @@ class WhatsAppInstance {
       id: this.instance.sock?.user?.id.split(':')[0]
     };
     if(chatwoot_config) this._setChatwoot().create(chatwoot_config,this.key);
-    const _chc = await this._setChatwoot().set(this.key);
-    this.chatwoot_api = _chc.chatwoot_api;
-    this.chatwoot_account_id = _chc.account_id;
-    this.chatwoot_inbox_id = _chc.inbox_id;
-    this.chatwoot = _chc.chatwoot;
+    const _ = await this._setChatwoot().set(this.key);
+    
+    this.chatwoot_api = axios.create({
+      baseURL: _.baseURL,
+      headers: { 'Content-Type': 'application/json;charset=utf-8', api_access_token: _.chatwoot_token },
+    });
+    this.chatwoot_account_id = _.account_id;
+    this.chatwoot_inbox_id = _.inbox_id;
+    this.chatwoot = _;
+    pino().warn(this.chatwoot);
     this.setHandler();
     return this;
   }
@@ -111,18 +117,8 @@ class WhatsAppInstance {
     async function set(key){
       let chatwootData = await readFile(path.join(__dirname,`../chatwootdata/${key}.json`));
       const chatwoot = JSON.parse(chatwootData.toString());
-      const account_id = chatwoot.account_id;
-      const inbox_id = chatwoot.inbox_id;
-      const chatwoot_api = axios.create({
-        baseURL: chatwoot.baseURL,
-        headers: { 'Content-Type': 'application/json;charset=utf-8', api_access_token: chatwoot.chatwoot_token },
-      });
-      return{
-        chatwoot,
-        account_id,
-        inbox_id,
-        chatwoot_api
-      };
+      
+      return chatwoot;
     }
     return {
       set,
@@ -223,6 +219,7 @@ class WhatsAppInstance {
       await m.messages.map(async (msg) => {
         if (!msg.message) return;
         if (msg.key.fromMe){ 
+          pino().warn(msg);
           await this.chatwootSendMessage(this, msg, true);
           return; };
 
@@ -241,7 +238,7 @@ class WhatsAppInstance {
           
 
         if (messageType === 'conversation') {
-          this.chatwootSendMessage(this, msg);
+          await this.chatwootSendMessage(this, msg);
         }else{
           pino().warn(msg);
         }
@@ -634,92 +631,89 @@ class WhatsAppInstance {
     let conversation = await this.chatwootCreateConversation(contact, message.key.remoteJid.split('@')[0]);
     const messageType = Object.keys(message.message)[0];
     try {
-      if( messageType ){
-        if (
-          messageType == 'imageMessage' ||
-        messageType == 'videoMessage' ||
-        messageType == 'documentMessage' ||
-        messageType == 'audioMessage'
-        ) {
-          const msg = message.message;
-          if (msg.mimetype == 'image/webp') msg.mimetype = 'image/jpeg';
-          let filename = msg.fileName;
-          let b64;
+      if (
+        messageType == 'imageMessage' ||
+          messageType == 'videoMessage' ||
+          messageType == 'documentMessage' ||
+          messageType == 'audioMessage'
+      ) {
+        const msg = message.message;
+        if (msg[`${messageType}`].mimetype == 'image/webp') msg[`${messageType}`].mimetype = 'image/jpeg';
+        let filename = msg[`${messageType}`].fileName;
+        let b64;
+        let buffer;
 
-          if (message.qrCode) b64 = message.qrCode;
-          else {
-            switch (messageType) {
-            case 'imageMessage':
-              b64 = await downloadMessage(
-                msg.imageMessage,
-                'image'
-              );
-              break;
-            case 'videoMessage':
-              b64 = await downloadMessage(
-                msg.videoMessage,
-                'video'
-              );
-              break;
-            case 'audioMessage':
-              b64 = await downloadMessage(
-                msg.audioMessage,
-                'audio'
-              );
-              break;
-            case 'documentMessage':
-              b64 = await downloadMessage(
-                msg.documentMessage,
-                'document'
-              );
-              break;
-            default:
-              b64 = '';
-              break;
-            }
-          }
-          pino().info(b64);
-          let mediaData = Buffer.from(b64, 'base64');
-
-          let data = new FormData();
-          if (message.caption) {
-            data.append('content', message.caption);
-          }
-          data.append('attachments[]', toStream(mediaData), {
-            filename: filename,
-            contentType: msg.mimetype,
+        
+        switch (messageType) {
+        case 'imageMessage':
+          buffer = await decryptFile(
+            msg[`${messageType}`],
+            'Image'
+          );
+          b64 = buffer.toString('base64');
+          break;
+        case 'videoMessage':
+          buffer = await decryptFile(
+            msg[`${messageType}`],
+            'Video'
+          );
+          b64 = buffer.toString('base64');
+          break;
+        case 'audioMessage':
+          buffer = await decryptFile(
+            msg[`${messageType}`],
+            'Audio'
+          );
+          b64 = buffer.toString('base64');
+          break;
+        case 'documentMessage':
+          buffer = await decryptFile(
+            msg[`${messageType}`],
+            'Document'
+          );
+          b64 = buffer.toString('base64');
+          break;
+        default:
+          b64 = '';
+          break;
+        }
+        let mediaData = Buffer.from(b64, 'base64');
+        let data = new FormData();
+        if (msg[`${messageType}`].caption) {
+          data.append('content', msg[`${messageType}`].caption);
+        }else{
+          data.append('content', ' ');
+        }
+        data.append('attachments[]', toStream(mediaData));
+        !message.key.fromMe ? data.append('message_type', 'incoming') : data.append('message_type', 'outgoing');
+        data.append('private', 'false');
+        let configPost = Object.assign(
+          {},
+          {
+            baseURL: this.chatwoot.baseURL,
+            headers: {
+              'Content-Type': 'multipart/form-data',
+              api_access_token: this.chatwoot.chatwoot_token,
+            },
+            transformRequest: formData => formData
           });
-          !message.key.fromMe ? data.append('message_type', 'incoming') : data.append('message_type', 'outgoing');
-          data.append('private', 'false');
-
-          let configPost = Object.assign(
-            {},
-            {
-              baseURL: this.chatwoot.baseURL,
-              headers: {
-                'Content-Type': 'application/json;charset=utf-8',
-                api_access_token: this.chatwoot.chatwoot_token,
-              },
-            }
-          );
-          configPost.headers = { ...configPost.headers, ...data.getHeaders() };
-
-          var result = await axios.post(
-            `api/v1/accounts/${this.account_id}/conversations/${conversation.id}/messages`,
-            data,
-            configPost
-          );
-
-          return result;
-        }} else {
+        configPost.headers = { ...configPost.headers, ...data.getHeaders() };
+        var result = await axios.post(
+          `api/v1/accounts/${this.chatwoot_account_id}/conversations/${conversation.id}/messages`,
+          data,
+          configPost
+        );
+        return result?.data;
+      } else {
         let body = {
           content: message.message.conversation,
           message_type: message.key.fromMe ? 'outgoing' : 'incoming',
         };
         const { data } = await this.chatwoot_api.post(
-          `api/v1/accounts/${this.account_id}/conversations/${conversation.id}/messages`,
+          `api/v1/accounts/${this.chatwoot_account_id}/conversations/${conversation.id}/messages`,
           body
         );
+        ;
         return data;
       }
     } catch (e) {
@@ -730,7 +724,7 @@ class WhatsAppInstance {
 
   async findContact(query) {
     try {
-      const { data } = await this.chatwoot_api.get(`api/v1/accounts/${this.account_id}/contacts/search/?q=${query}`);
+      const { data } = await this.chatwoot_api.get(`api/v1/accounts/${this.chatwoot_account_id}/contacts/search/?q=${query}`);
       return data;
     } catch (e) {
       pino().error(e);
@@ -740,7 +734,7 @@ class WhatsAppInstance {
 
   async chatwootCreateContact(message, fromMe) {
     let body = {
-      inbox_id: this.inbox_id,
+      inbox_id: this.chatwoot_inbox_id,
       name: fromMe ? message.key.remoteJid.split('@')[0] : message.pushName,
       phone_number: `+${message.key.remoteJid.split('@')[0]}`,
     };
@@ -748,7 +742,7 @@ class WhatsAppInstance {
     if (contact && contact.meta.count > 0) return contact.payload[0];
 
     try {
-      const data = await this.chatwoot_api.post(`api/v1/accounts/${this.account_id}/contacts`, body);
+      const data = await this.chatwoot_api.post(`api/v1/accounts/${this.chatwoot_account_id}/contacts`, body);
       return data.data.payload.contact;
     } catch (e) {
       pino().error(e);
@@ -759,7 +753,7 @@ class WhatsAppInstance {
   async findConversation(contact) {
     try {
       const { data } = await this.chatwoot_api.get(
-        `api/v1/accounts/${this.account_id}/conversations?inbox_id=${this.inbox_id}&status=all`
+        `api/v1/accounts/${this.chatwoot_account_id}/conversations?inbox_id=${this.chatwoot_inbox_id}&status=all`
       );
       return data.data.payload.find((e) => e.meta.sender.id === contact.id && e.status != 'resolved');
     } catch (e) {
@@ -774,12 +768,12 @@ class WhatsAppInstance {
 
     let body = {
       source_id: source_id,
-      inbox_id: this.inbox_id,
+      inbox_id: this.chatwoot_inbox_id,
       contact_id: contact.id,
       status: 'open',
     };
     try {
-      const { data } = await this.chatwoot_api.post(`api/v1/accounts/${this.account_id}/conversations`, body);
+      const { data } = await this.chatwoot_api.post(`api/v1/accounts/${this.chatwoot_account_id}/conversations`, body);
       return data;
     } catch (e) {
       pino().error(e);

@@ -34,7 +34,8 @@
   "dependencies": {
     "@adiwajshing/baileys": "^4.4.0",
     "@chatwoot/node": "git+https://github.com/chatwoot/node.git#main",
-    "axios": "^0.27.2",
+    "atob": "^2.1.2",
+    "axios": "^0.27.0",
     "buffer-to-stream": "^1.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
